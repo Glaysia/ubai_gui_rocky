@@ -1,0 +1,9 @@
+config/session.env
+logs/
+*.sqsh
+*.log
+*.err
+*.out
+__pycache__/
+.pytest_cache/
+.DS_Store
