@@ -1,4 +1,5 @@
 config/session.env
+secrets/
 logs/
 *.sqsh
 *.log
