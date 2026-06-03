@@ -19,7 +19,7 @@ Proposed solution:
 - desktop environment plus OpenGL/X11 and CST dependencies
 - xrdp server inside container
 - SSH reverse tunnel from compute node to Windows PC
-- Windows helper script for OpenSSH Server and firewall
+- Windows helper script for project-local OpenSSH sshd
 - Windows Remote Desktop Client connects to localhost forwarded port
 
 ## Important design decisions
@@ -37,7 +37,7 @@ There is sshfs logic in `Glaysia/peetsfea-runner` around commit `4642e657213a857
 The reverse tunnel default mode assumes:
 
 ```text
-compute node -> Windows PC:sshd
+compute node -> Windows PC project-local sshd
 ```
 
 If Windows PC is behind NAT and not reachable, this will fail. Add a relay mode later.
@@ -93,8 +93,8 @@ nano config/session.env
 On Windows:
 
 ```powershell
-python windows\uabi_reverse_helper.py --port 22
-netstat -ano | findstr 13389
+python windows\uabi_reverse_helper.py --port 10022 --local-rdp-port 9999
+netstat -ano | findstr 9999
 mstsc.exe
 ```
 
@@ -107,5 +107,5 @@ If `mstsc` reaches login screen but desktop is black:
 If tunnel fails:
 - check Windows sshd reachable from UABI
 - check firewall
-- try `ssh -vvv WINDOWS_USER@WINDOWS_HOST -p 22`
+- try `ssh -vvv WINDOWS_USER@WINDOWS_HOST -p 10022`
 - verify Windows account password/key auth

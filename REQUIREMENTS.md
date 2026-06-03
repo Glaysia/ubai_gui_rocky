@@ -28,7 +28,7 @@
 - Windows 10 1809 이상 또는 Windows 11
 - Python 3.10 이상 권장
 - 관리자 권한으로 helper 실행 가능
-- OpenSSH Server Windows capability 설치 가능
+- GitHub PowerShell/Win32-OpenSSH 릴리스 다운로드 가능, 또는 프로젝트 로컬 OpenSSH 준비 가능
 - UABI 계산노드에서 Windows PC의 SSH 포트로 접속 가능해야 함
   - 같은 학교망
   - VPN

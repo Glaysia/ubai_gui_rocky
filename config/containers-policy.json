@@ -1,0 +1,30 @@
+{
+  "default": [
+    {
+      "type": "insecureAcceptAnything"
+    }
+  ],
+  "transports": {
+    "docker": {
+      "": [
+        {
+          "type": "insecureAcceptAnything"
+        }
+      ]
+    },
+    "docker-archive": {
+      "": [
+        {
+          "type": "insecureAcceptAnything"
+        }
+      ]
+    },
+    "oci-archive": {
+      "": [
+        {
+          "type": "insecureAcceptAnything"
+        }
+      ]
+    }
+  }
+}

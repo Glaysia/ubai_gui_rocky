@@ -1,11 +1,11 @@
 # Troubleshooting
 
-## The Slurm job starts but Windows cannot connect to 127.0.0.1:13389
+## The Slurm job starts but Windows cannot connect to 127.0.0.1:9999
 
 Check on Windows:
 
 ```powershell
-netstat -ano | findstr 13389
+netstat -ano | findstr 9999
 ```
 
 If nothing is listening, the SSH reverse tunnel did not establish.
@@ -22,7 +22,7 @@ Common causes:
 
 - Windows PC is behind NAT.
 - Windows firewall rule not created.
-- Windows OpenSSH Server not running.
+- Project-local Windows OpenSSH sshd is not running.
 - Wrong Windows username.
 - Password login disabled or blocked.
 - Corporate/school security policy blocks inbound SSH.
@@ -30,8 +30,8 @@ Common causes:
 Run on Windows:
 
 ```powershell
-Get-Service sshd
-Get-NetFirewallRule -Name UABI-OpenSSH-Server-In-TCP
+python windows\uabi_reverse_helper.py --status
+Get-Process sshd
 ```
 
 ## xrdp login works but desktop is black

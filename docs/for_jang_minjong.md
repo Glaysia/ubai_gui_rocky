@@ -40,7 +40,7 @@ mstsc.exe
 접속 주소:
 
 ```text
-127.0.0.1:13389
+127.0.0.1:9999
 ```
 
 이런 식으로 안내할 수 있어 사용자가 이해하기 쉽습니다.
@@ -53,7 +53,7 @@ UABI 계산노드는 보통 외부에서 직접 접속할 수 있는 TCP port를
 구조는 다음과 같습니다.
 
 ```text
-Windows PC 127.0.0.1:13389
+Windows PC 127.0.0.1:9999
 ← SSH reverse tunnel
 ← UABI 계산노드 컨테이너 127.0.0.1:3389
 ← xrdp desktop
@@ -66,7 +66,7 @@ Windows PC 127.0.0.1:13389
 ### 1. Windows PC에서 helper 실행
 
 ```powershell
-python windows\uabi_reverse_helper.py --port 22
+python windows\uabi_reverse_helper.py --port 10022 --local-rdp-port 9999
 ```
 
 이 스크립트는 다음을 자동으로 처리합니다.
@@ -89,11 +89,11 @@ nano config/session.env
 
 ```bash
 UABI_REVERSE_SSH_TARGET="Windows사용자명@Windows주소"
-UABI_REVERSE_SSH_PORT="22"
-UABI_REVERSE_LOCAL_PORT_ON_WINDOWS="13389"
+UABI_REVERSE_SSH_PORT="10022"
+UABI_REVERSE_LOCAL_PORT_ON_WINDOWS="9999"
 
-UABI_XRDP_USER="cstuser"
-UABI_XRDP_PASSWORD="원하는비밀번호"
+UABI_XRDP_USER="user"
+UABI_XRDP_PASSWORD="1q2w3e"
 ```
 
 ### 3. 이미지 빌드
@@ -112,14 +112,14 @@ UABI_XRDP_PASSWORD="원하는비밀번호"
 
 ```text
 mstsc.exe
-→ 127.0.0.1:13389
+→ 127.0.0.1:9999
 ```
 
 로그인:
 
 ```text
-username: cstuser
-password: session.env에 적은 값
+username: user
+password: 1q2w3e
 ```
 
 ## CST 설치에 대해

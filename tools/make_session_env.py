@@ -9,23 +9,23 @@ def main() -> int:
     p.add_argument("--template", default="config/example.env")
     p.add_argument("--output", default="config/session.env")
     p.add_argument("--windows-target", required=True)
-    p.add_argument("--windows-port", default="22")
-    p.add_argument("--local-rdp-port", default="13389")
-    p.add_argument("--xrdp-user", default="cstuser")
-    p.add_argument("--xrdp-password", required=True)
+    p.add_argument("--windows-port", default="10022")
+    p.add_argument("--local-rdp-port", default="9999")
+    p.add_argument("--xrdp-user", default="user")
+    p.add_argument("--xrdp-password", default="1q2w3e")
     args = p.parse_args()
 
     template = Path(args.template).read_text(encoding="utf-8")
     replacements = {
         'export UABI_REVERSE_SSH_TARGET="WINDOWS_USER@WINDOWS_HOST_OR_IP"':
             f'export UABI_REVERSE_SSH_TARGET="{args.windows_target}"',
-        'export UABI_REVERSE_SSH_PORT="22"':
+        'export UABI_REVERSE_SSH_PORT="10022"':
             f'export UABI_REVERSE_SSH_PORT="{args.windows_port}"',
-        'export UABI_REVERSE_LOCAL_PORT_ON_WINDOWS="13389"':
+        'export UABI_REVERSE_LOCAL_PORT_ON_WINDOWS="9999"':
             f'export UABI_REVERSE_LOCAL_PORT_ON_WINDOWS="{args.local_rdp_port}"',
-        'export UABI_XRDP_USER="cstuser"':
+        'export UABI_XRDP_USER="user"':
             f'export UABI_XRDP_USER="{args.xrdp_user}"',
-        'export UABI_XRDP_PASSWORD="CHANGE_ME_LONG_PASSWORD"':
+        'export UABI_XRDP_PASSWORD="1q2w3e"':
             f'export UABI_XRDP_PASSWORD="{args.xrdp_password}"',
     }
     out = template

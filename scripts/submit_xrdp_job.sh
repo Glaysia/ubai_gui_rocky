@@ -24,7 +24,14 @@ sbatch_args=()
 
 mkdir -p "$repo_root/logs"
 
+if command -v enroot >/dev/null 2>&1; then
+  sbatch_file="$repo_root/slurm/uabi_cst_xrdp.sbatch"
+else
+  echo "[WARN] enroot not found; submitting podman fallback job." >&2
+  sbatch_file="$repo_root/slurm/uabi_cst_xrdp_podman.sbatch"
+fi
+
 echo "[INFO] Submitting XRDP job with env: $abs_env_file"
 sbatch "${sbatch_args[@]}" \
   --export=ALL,UABI_ENV_FILE="$abs_env_file",UABI_REPO_ROOT="$repo_root" \
-  "$repo_root/slurm/uabi_cst_xrdp.sbatch"
+  "$sbatch_file"

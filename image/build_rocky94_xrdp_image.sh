@@ -35,7 +35,11 @@ set -euo pipefail
 echo "[INFO] Rocky release:"
 cat /etc/rocky-release || true
 
-dnf -y update
+sed -ri \
+  -e 's|^mirrorlist=|#mirrorlist=|g' \
+  -e 's|^#?baseurl=http://dl.rockylinux.org/\$contentdir/\$releasever/|baseurl=https://dl.rockylinux.org/vault/rocky/9.4/|g' \
+  /etc/yum.repos.d/rocky*.repo
+
 dnf -y install dnf-plugins-core epel-release
 dnf config-manager --set-enabled crb || true
 
@@ -195,6 +199,7 @@ echo "[INFO] Validating final image..."
 enroot start --root --rw "$UABI_ENROOT_NAME" /bin/bash -lc '
 set -e
 cat /etc/rocky-release
+grep -q "Rocky Linux release 9.4" /etc/rocky-release
 command -v xrdp
 command -v xrdp-sesman
 command -v startxfce4 || true

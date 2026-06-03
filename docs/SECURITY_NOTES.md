@@ -2,18 +2,19 @@
 
 ## Recommended default
 
-- Use SSH key authentication for Windows OpenSSH Server.
+- Use SSH key authentication for the project-local Windows OpenSSH Server.
 - Restrict Windows firewall `RemoteAddress` to UABI or campus egress IP if known.
 - Use `127.0.0.1` for reverse tunnel bind host.
 - Do not expose xrdp directly on a public interface.
 - Do not commit `config/session.env`.
+- Run the project-local `sshd.exe`; do not depend on the Windows system sshd service.
 
 ## Why bind reverse port to 127.0.0.1?
 
 The Slurm job uses:
 
 ```bash
--R 127.0.0.1:13389:127.0.0.1:3389
+-R 127.0.0.1:9999:127.0.0.1:3389
 ```
 
 This means the RDP endpoint is only visible from the Windows PC itself, not from the whole network.
@@ -29,16 +30,12 @@ This means the RDP endpoint is only visible from the Windows PC itself, not from
 
 ## Windows sshd
 
-The Windows helper sets `sshd` startup type to Manual, not Automatic. This is intentional. Users should start it only when needed.
+The Windows helper starts a project-local OpenSSH `sshd.exe` with a dedicated
+config under `secrets/windows-sshd`. It does not use `Start-Service sshd` and
+does not modify the Windows system sshd service.
 
 Stop sshd:
 
 ```powershell
 python windows\uabi_reverse_helper.py --stop
-```
-
-or:
-
-```powershell
-Stop-Service sshd
 ```

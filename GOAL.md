@@ -31,7 +31,7 @@ sshfs는 의도적으로 제외했다. CST GUI 접속과 실행 가능성 PoC에
 ### Windows PC
 
 ```powershell
-python windows\uabi_reverse_helper.py --port 22
+python windows\uabi_reverse_helper.py --port 10022 --local-rdp-port 9999
 ```
 
 ### UABI login node
@@ -47,16 +47,16 @@ nano config/session.env
 
 ```text
 mstsc.exe
-Computer: 127.0.0.1:13389
-Username: cstuser
-Password: config/session.env에 지정한 값
+Computer: 127.0.0.1:9999
+Username: user
+Password: 1q2w3e
 ```
 
 ## 성공 판정
 
 1. Slurm job이 계산노드에서 살아 있다.
-2. Windows PC에서 `netstat -ano | findstr 13389`로 reverse tunnel listen이 보인다.
-3. Windows Remote Desktop에서 `127.0.0.1:13389` 접속이 된다.
+2. Windows PC에서 `netstat -ano | findstr 9999`로 reverse tunnel listen이 보인다.
+3. Windows Remote Desktop에서 `127.0.0.1:9999` 접속이 된다.
 4. XFCE desktop이 뜬다.
 5. 컨테이너 터미널에서 다음이 된다.
 

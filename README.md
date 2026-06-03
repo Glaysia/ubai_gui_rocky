@@ -14,9 +14,8 @@ UABI/HPC 계산노드에서 `enroot + Rocky Linux 9.4 + xrdp`로 CST Studio Suit
 
 ```text
 Windows PC
-  ├─ OpenSSH Server, sshd
-  ├─ Windows Defender Firewall rule
-  └─ mstsc.exe → 127.0.0.1:13389
+  ├─ project-local OpenSSH sshd.exe, not Windows sshd service
+  └─ mstsc.exe → 127.0.0.1:9999
 
 UABI compute node
   └─ Slurm job
@@ -25,20 +24,22 @@ UABI compute node
           ├─ xrdp/xrdp-sesman
           ├─ OpenGL/X11 runtime
           ├─ CST Studio Suite, user-provided
-          └─ ssh -R 127.0.0.1:13389:127.0.0.1:3389 WindowsPC
+          └─ ssh -p 10022 -R 127.0.0.1:9999:127.0.0.1:3389 WindowsPC
 ```
 
 ## Quick start
 
 ### 1. Windows PC 준비
 
-관리자 PowerShell 또는 일반 shell에서 실행한다. 일반 shell이어도 UAC 승격을 시도한다.
+일반 PowerShell에서 실행한다. Windows 시스템 `sshd` 서비스는 사용하지 않는다.
 
 ```powershell
-python windows\uabi_reverse_helper.py --port 22
+python windows\uabi_reverse_helper.py --port 10022 --local-rdp-port 9999
 ```
 
-출력되는 Windows username, hostname, IP를 기록한다.
+프로젝트 로컬 OpenSSH가 없으면 GitHub의 PowerShell/Win32-OpenSSH 릴리스에서 내려받는다.
+다시 내려받아 덮어쓰려면 `--force-install`을 붙인다. 출력되는 Windows username,
+hostname, IP, UABI-side private key 경로를 기록한다.
 
 ### 2. UABI에서 설정 파일 작성
 
@@ -53,12 +54,13 @@ nano config/session.env
 UABI_IMAGE="$HOME/runtime/enroot/uabi-cst-rocky94-xrdp.sqsh"
 
 UABI_REVERSE_SSH_TARGET="WINDOWS_USER@WINDOWS_HOST_OR_IP"
-UABI_REVERSE_SSH_PORT="22"
-UABI_REVERSE_LOCAL_PORT_ON_WINDOWS="13389"
+UABI_REVERSE_SSH_PORT="10022"
+UABI_REVERSE_LOCAL_PORT_ON_WINDOWS="9999"
 UABI_XRDP_PORT_IN_CONTAINER="3389"
+UABI_SSH_IDENTITY_FILE="/path/on/uabi/uabi_reverse_ed25519"
 
-UABI_XRDP_USER="cstuser"
-UABI_XRDP_PASSWORD="CHANGE_ME_LONG_PASSWORD"
+UABI_XRDP_USER="user"
+UABI_XRDP_PASSWORD="1q2w3e"
 
 UABI_CST_INSTALLER_PATH=""
 UABI_CST_LICENSE_SERVER=""
@@ -80,9 +82,9 @@ UABI_CST_LICENSE_SERVER=""
 
 ```text
 mstsc.exe
-Computer: 127.0.0.1:13389
-Username: cstuser
-Password: config/session.env의 UABI_XRDP_PASSWORD
+Computer: 127.0.0.1:9999
+Username: user
+Password: 1q2w3e
 ```
 
 ## CST 설치
@@ -120,7 +122,7 @@ scripts/submit_xrdp_job.sh
   env file을 Slurm job에 넘겨 제출
 
 windows/uabi_reverse_helper.py
-  Windows OpenSSH Server 준비 helper
+  프로젝트 전용 portable OpenSSH sshd 준비 helper
 
 docs/for_jang_minjong.md
   장민종님에게 전달할 친절 설명서
@@ -138,7 +140,7 @@ docs/HANDOFF_FOR_NEXT_AGENT.md
 - xrdp manual foreground startup
 - Slurm job에서 enroot container 실행
 - Slurm job에서 SSH reverse tunnel 실행
-- Windows helper로 OpenSSH Server 설치/시작/firewall rule 생성
+- Windows helper로 프로젝트 전용 OpenSSH 다운로드/설정/시작
 - CST 설치 hook placeholder
 - 동료 연구실 전달 문서
 

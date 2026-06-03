@@ -16,10 +16,10 @@ source "$UABI_ENV_FILE"
 : "${UABI_REPO_ROOT:=$(cd "$(dirname "$0")/.." && pwd)}"
 : "${UABI_IMAGE:?UABI_IMAGE is required}"
 : "${UABI_XRDP_PORT_IN_CONTAINER:=3389}"
-: "${UABI_REVERSE_LOCAL_PORT_ON_WINDOWS:=13389}"
+: "${UABI_REVERSE_LOCAL_PORT_ON_WINDOWS:=9999}"
 : "${UABI_REVERSE_BIND_HOST:=127.0.0.1}"
 : "${UABI_REVERSE_SSH_TARGET:?UABI_REVERSE_SSH_TARGET is required}"
-: "${UABI_REVERSE_SSH_PORT:=22}"
+: "${UABI_REVERSE_SSH_PORT:=10022}"
 : "${UABI_SSH_STRICT_HOST_KEY_CHECKING:=accept-new}"
 : "${UABI_KEEP_CONTAINER_AFTER_EXIT:=0}"
 
@@ -121,7 +121,7 @@ ssh "${ssh_args[@]}" "$UABI_REVERSE_SSH_TARGET"
 echo "[OK] Reverse tunnel established."
 echo "[INFO] On Windows, open mstsc.exe and connect to:"
 echo "       127.0.0.1:${UABI_REVERSE_LOCAL_PORT_ON_WINDOWS}"
-echo "[INFO] XRDP user: ${UABI_XRDP_USER:-cstuser}"
+echo "[INFO] XRDP user: ${UABI_XRDP_USER:-user}"
 
 while kill -0 "$container_pid" >/dev/null 2>&1; do
   if ! ssh -S "$tunnel_ctl" -O check "$UABI_REVERSE_SSH_TARGET" >/dev/null 2>&1; then

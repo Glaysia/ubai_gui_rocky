@@ -1,0 +1,72 @@
+FROM docker.io/rockylinux/rockylinux:9.4
+
+ARG ROCKY_RELEASE=9.4
+
+RUN sed -ri \
+      -e 's|^mirrorlist=|#mirrorlist=|g' \
+      -e "s|^#?baseurl=http://dl.rockylinux.org/\\\$contentdir/\\\$releasever/|baseurl=https://dl.rockylinux.org/vault/rocky/${ROCKY_RELEASE}/|g" \
+      /etc/yum.repos.d/rocky*.repo && \
+    printf '%s\n' 'max_parallel_downloads=10' >> /etc/dnf/dnf.conf && \
+    dnf -y install dnf-plugins-core epel-release && \
+    dnf config-manager --set-enabled crb || true
+
+RUN dnf -y install --allowerasing \
+      bash findutils procps-ng which tar gzip bzip2 xz unzip zip \
+      hostname iproute iputils net-tools lsof less vim nano sudo shadow-utils \
+      openssh-clients ca-certificates wget rsync git python3
+
+RUN dnf -y groupinstall "Xfce" || true
+
+RUN dnf -y install --allowerasing \
+      xrdp tigervnc-server xorgxrdp xorg-x11-server-Xorg xorg-x11-server-Xvfb \
+      xorg-x11-xauth xorg-x11-utils xterm dbus-x11 \
+      mesa-libGL mesa-libGLU mesa-dri-drivers mesa-demos libglvnd libglvnd-glx \
+      libglvnd-egl libX11 libXext libXrender libXt libXi libXrandr libXcursor \
+      libXinerama libXcomposite libXdamage libXfixes libxcb libxkbcommon \
+      libxkbcommon-x11 fontconfig dejavu-sans-fonts google-noto-sans-cjk-ttc-fonts \
+      glibc-langpack-en glibc-langpack-ko gtk2 gtk3 nss nspr alsa-lib \
+      pulseaudio-libs libXScrnSaver at-spi2-atk at-spi2-core cups-libs libdrm \
+      libxshmfence vulkan-loader psmisc htop strace file \
+      libnsl libnsl2 libaio numactl-libs openmotif motif libpng libjpeg-turbo \
+      libtiff expat freetype zlib bzip2-libs xz-libs libuuid libselinux \
+      libxcrypt-compat
+
+RUN mkdir -p /etc/xrdp /run/xrdp /var/run/xrdp /var/log/xrdp && \
+    if [ -x /usr/bin/xrdp-keygen ]; then xrdp-keygen xrdp auto >/dev/null 2>&1 || true; fi && \
+    printf '#!/usr/bin/env bash\nexec startxfce4\n' > /etc/skel/.Xclients && \
+    chmod +x /etc/skel/.Xclients
+
+RUN if [ -f /etc/xrdp/startwm.sh ]; then \
+      cp -f /etc/xrdp/startwm.sh /etc/xrdp/startwm.sh.orig || true; \
+      printf '#!/usr/bin/env bash\nunset DBUS_SESSION_BUS_ADDRESS\nunset XDG_RUNTIME_DIR\nexec startxfce4\n' > /etc/xrdp/startwm.sh; \
+      chmod +x /etc/xrdp/startwm.sh; \
+    fi
+
+RUN printf '%s\n' \
+      '#!/usr/bin/env bash' \
+      'set -euo pipefail' \
+      'echo "Rocky: $(cat /etc/rocky-release 2>/dev/null || true)"' \
+      'echo "DISPLAY=${DISPLAY:-}"' \
+      'echo "Try: glxinfo | grep -E '"'"'OpenGL vendor|OpenGL renderer|OpenGL version'"'"'"' \
+      'exec "${SHELL:-/bin/bash}"' \
+      > /usr/local/bin/uabi-cst-shell && \
+    chmod +x /usr/local/bin/uabi-cst-shell
+
+RUN printf '%s\n' \
+      '#!/usr/bin/env bash' \
+      'set -euo pipefail' \
+      'CANDIDATES=("/opt/cst/cst_design_environment" "/opt/cst/CST_Studio_Suite/cst_design_environment" "/usr/local/CST_Studio_Suite/cst_design_environment")' \
+      'for path in "${CANDIDATES[@]}"; do' \
+      '  if [ -x "$path" ]; then exec "$path" "$@"; fi' \
+      'done' \
+      'echo "[ERROR] CST launcher not found. Edit /usr/local/bin/uabi-start-cst." >&2' \
+      'exit 127' \
+      > /usr/local/bin/uabi-start-cst && \
+    chmod +x /usr/local/bin/uabi-start-cst
+
+COPY image/install_cst_placeholder.sh /tmp/install_cst_placeholder.sh
+RUN /bin/bash /tmp/install_cst_placeholder.sh || true
+
+RUN dnf clean all && rm -rf /var/cache/dnf /tmp/*
+
+CMD ["/bin/bash"]
