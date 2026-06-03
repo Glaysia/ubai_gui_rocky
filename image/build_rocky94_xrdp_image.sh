@@ -6,7 +6,11 @@ set -euo pipefail
 : "${UBAI_ENROOT_NAME:=ubai-cst-rocky94-xrdp-build}"
 : "${UBAI_BUILD_WORKDIR:=$HOME/runtime/enroot/build-ubai-cst-rocky94}"
 : "${UBAI_BUILD_INCLUDE_CST_DEPS:=0}"
+: "${UBAI_ROCKY_MIRROR:=https://ftp.kaist.ac.kr/pub/rocky/9}"
+: "${UBAI_EPEL_MIRROR:=https://ftp.kaist.ac.kr/pub/epel/9}"
 export UBAI_BUILD_INCLUDE_CST_DEPS
+export UBAI_ROCKY_MIRROR
+export UBAI_EPEL_MIRROR
 
 if [ "$UBAI_BASE_IMAGE" = "docker://rockylinux:9.4" ]; then
   echo "[INFO] Rewriting legacy Rocky image reference to docker://rockylinux/rockylinux:9.4"
@@ -21,6 +25,8 @@ mkdir -p "$(dirname "$UBAI_IMAGE")" "$UBAI_BUILD_WORKDIR"
 echo "[INFO] Base image: $UBAI_BASE_IMAGE"
 echo "[INFO] Target image: $UBAI_IMAGE"
 echo "[INFO] Build workdir: $UBAI_BUILD_WORKDIR"
+echo "[INFO] Rocky mirror: $UBAI_ROCKY_MIRROR"
+echo "[INFO] EPEL mirror: $UBAI_EPEL_MIRROR"
 
 base_sqsh="$UBAI_BUILD_WORKDIR/base.sqsh"
 
@@ -43,10 +49,49 @@ set -euo pipefail
 echo "[INFO] Rocky release:"
 cat /etc/rocky-release || true
 
-sed -ri \
-  -e 's|^mirrorlist=|#mirrorlist=|g' \
-  -e 's|^#?baseurl=http://dl.rockylinux.org/\$contentdir/\$releasever/|baseurl=https://dl.rockylinux.org/vault/rocky/9.4/|g' \
-  /etc/yum.repos.d/rocky*.repo
+: "${UBAI_ROCKY_MIRROR:=https://ftp.kaist.ac.kr/pub/rocky/9}"
+: "${UBAI_EPEL_MIRROR:=https://ftp.kaist.ac.kr/pub/epel/9}"
+rocky_mirror="${UBAI_ROCKY_MIRROR%/}"
+epel_mirror="${UBAI_EPEL_MIRROR%/}"
+
+echo "[INFO] Configuring dnf mirrors:"
+echo "       Rocky: $rocky_mirror"
+echo "       EPEL : $epel_mirror"
+
+for repo in /etc/yum.repos.d/*.repo; do
+  [ -f "$repo" ] || continue
+  sed -ri \
+    -e 's|^enabled=1|enabled=0|g' \
+    -e 's|^mirrorlist=|#mirrorlist=|g' \
+    -e 's|^metalink=|#metalink=|g' \
+    "$repo"
+done
+
+cat > /etc/yum.repos.d/ubai-kaist-rocky.repo <<EOF
+[baseos]
+name=Rocky Linux 9 BaseOS - KAIST
+baseurl=${rocky_mirror}/BaseOS/x86_64/os/
+enabled=1
+gpgcheck=0
+
+[appstream]
+name=Rocky Linux 9 AppStream - KAIST
+baseurl=${rocky_mirror}/AppStream/x86_64/os/
+enabled=1
+gpgcheck=0
+
+[crb]
+name=Rocky Linux 9 CRB - KAIST
+baseurl=${rocky_mirror}/CRB/x86_64/os/
+enabled=1
+gpgcheck=0
+
+[extras]
+name=Rocky Linux 9 Extras - KAIST
+baseurl=${rocky_mirror}/extras/x86_64/os/
+enabled=1
+gpgcheck=0
+EOF
 
 dnf_base=(
   dnf -y
@@ -82,7 +127,27 @@ run_dnf() {
 }
 
 UBAI_DNF_TIMEOUT_SECONDS=240 run_dnf install dnf-plugins-core epel-release
-dnf config-manager --set-enabled crb || true
+
+cat > /etc/yum.repos.d/ubai-kaist-epel.repo <<EOF
+[epel]
+name=Extra Packages for Enterprise Linux 9 - KAIST
+baseurl=${epel_mirror}/Everything/x86_64/
+enabled=1
+gpgcheck=0
+EOF
+
+for repo in /etc/yum.repos.d/epel*.repo; do
+  [ -f "$repo" ] || continue
+  [ "$repo" = "/etc/yum.repos.d/ubai-kaist-epel.repo" ] && continue
+  sed -ri \
+    -e 's|^enabled=1|enabled=0|g' \
+    -e 's|^mirrorlist=|#mirrorlist=|g' \
+    -e 's|^metalink=|#metalink=|g' \
+    "$repo"
+done
+
+dnf clean all || true
+run_dnf makecache --refresh
 
 run_dnf install \
   bash coreutils findutils procps-ng which tar gzip bzip2 xz unzip zip \
