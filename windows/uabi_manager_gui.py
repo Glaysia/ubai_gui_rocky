@@ -31,7 +31,93 @@ CONTAINER_SSH_PORT = "9922"
 SPINNER_FRAMES = ("\\", "|", "/", "-")
 REMOTE_PROJECT_DIRS = ("config", "container", "docs", "image", "scripts", "slurm", "tools")
 REMOTE_PROJECT_FILES = ("GOAL.md", "LICENSE", "README.md", "REQUIREMENTS.md", "manifest.json")
-DEFAULT_PARTITIONS = ("gpu1", "gpu2", "gpu3", "gpu4", "gpu5", "gpu6", "cpu1", "cpu2")
+
+# Snapshot from `sinfo` on the UBAI gate node. The UI intentionally does not
+# query this on every launch.
+PARTITION_RESOURCES: tuple[dict[str, str], ...] = (
+    {
+        "name": "gpu1",
+        "nodes": "14",
+        "state": "mix 10, alloc 2, drain 2",
+        "cpu": "48",
+        "mem": "768000",
+        "gpu": "RTX 3090 x4/node",
+        "total_gpu": "56",
+        "node_range": "n001-n014",
+    },
+    {
+        "name": "gpu6",
+        "nodes": "25",
+        "state": "mix 13, alloc 11, drain 1",
+        "cpu": "48",
+        "mem": "768000",
+        "gpu": "A10 x4/node",
+        "total_gpu": "100",
+        "node_range": "n015-n039",
+    },
+    {
+        "name": "cpu1",
+        "nodes": "10",
+        "state": "mix 5, alloc 5",
+        "cpu": "48",
+        "mem": "768000",
+        "gpu": "-",
+        "total_gpu": "0",
+        "node_range": "n040-n049",
+    },
+    {
+        "name": "gpu2",
+        "nodes": "11",
+        "state": "mix 8, alloc 3",
+        "cpu": "56",
+        "mem": "1024000",
+        "gpu": "A10 x4/node",
+        "total_gpu": "44",
+        "node_range": "n051-n061",
+    },
+    {
+        "name": "gpu3",
+        "nodes": "10",
+        "state": "mix 10",
+        "cpu": "56",
+        "mem": "1024000",
+        "gpu": "A6000 Ada x4/node",
+        "total_gpu": "40",
+        "node_range": "n062-n071",
+    },
+    {
+        "name": "gpu4",
+        "nodes": "29",
+        "state": "mix 14, alloc 14, resv 1",
+        "cpu": "56",
+        "mem": "1024000",
+        "gpu": "A6000 x4/node; n091 x3",
+        "total_gpu": "115",
+        "node_range": "n072-n100",
+    },
+    {
+        "name": "gpu5",
+        "nodes": "6",
+        "state": "alloc 6",
+        "cpu": "64",
+        "mem": "1024000",
+        "gpu": "A6000 x4/node",
+        "total_gpu": "24",
+        "node_range": "n101-n106",
+    },
+    {
+        "name": "cpu2",
+        "nodes": "10",
+        "state": "mix 7, alloc 1, drain 1, drng 1",
+        "cpu": "256",
+        "mem": "1031516-1031519",
+        "gpu": "-",
+        "total_gpu": "0",
+        "node_range": "n107-n116",
+    },
+)
+PARTITION_RESOURCE_BY_NAME = {item["name"]: item for item in PARTITION_RESOURCES}
+DEFAULT_PARTITIONS = tuple(item["name"] for item in PARTITION_RESOURCES)
 
 DEFAULTS = {
     "uabi_user": "harry261",
@@ -169,12 +255,13 @@ class UabiManager(tk.Tk):
         self.connection_var = tk.StringVar(value="\\ 대기 중(접속 불가능)")
         self.job_var = tk.StringVar(value=load_json(STATE_PATH).get("job_id", ""))
         self.partition_combo: ttk.Combobox | None = None
+        self.partition_tree: ttk.Treeview | None = None
+        self.partition_detail_var = tk.StringVar(value="")
         self.worker: threading.Thread | None = None
         self.stop_requested = threading.Event()
         self.messages: queue.Queue[tuple[str, str]] = queue.Queue()
 
         self._build_ui()
-        self.after(300, self.refresh_partitions)
         self.after(100, self._drain_messages)
         self.after(250, self._tick_connection_indicator)
 
@@ -208,6 +295,7 @@ class UabiManager(tk.Tk):
         ttk.Label(res, text="XRDP user").grid(row=1, column=6, padx=6, pady=6, sticky="w")
         ttk.Label(res, text="root").grid(row=1, column=7, padx=6, pady=6, sticky="w")
         self._entry(res, "Root password", "xrdp_password", 2, 0, colspan=3, show="*")
+        self._build_partition_resource_table(res)
 
         actions = ttk.Frame(self)
         actions.grid(row=2, column=0, padx=12, pady=6, sticky="ew")
@@ -275,6 +363,57 @@ class UabiManager(tk.Tk):
         combo.grid(row=row, column=column + 1, columnspan=colspan, padx=6, pady=6, sticky="ew")
         if key == "partition":
             self.partition_combo = combo
+            combo.bind("<<ComboboxSelected>>", self._on_partition_selected)
+
+    def _build_partition_resource_table(self, parent: ttk.Frame) -> None:
+        columns = ("partition", "nodes", "state", "cpu", "mem", "gpu", "total_gpu", "node_range")
+        tree = ttk.Treeview(parent, columns=columns, show="headings", height=len(PARTITION_RESOURCES))
+        headings = {
+            "partition": "Partition",
+            "nodes": "Nodes",
+            "state": "State",
+            "cpu": "CPU/node",
+            "mem": "Mem MB/node",
+            "gpu": "GPU/node",
+            "total_gpu": "Total GPU",
+            "node_range": "Node Range",
+        }
+        widths = {
+            "partition": 78,
+            "nodes": 54,
+            "state": 170,
+            "cpu": 74,
+            "mem": 98,
+            "gpu": 180,
+            "total_gpu": 74,
+            "node_range": 120,
+        }
+        for column in columns:
+            tree.heading(column, text=headings[column])
+            tree.column(column, width=widths[column], anchor="w", stretch=True)
+        for item in PARTITION_RESOURCES:
+            tree.insert(
+                "",
+                "end",
+                iid=item["name"],
+                values=(
+                    item["name"],
+                    item["nodes"],
+                    item["state"],
+                    item["cpu"],
+                    item["mem"],
+                    item["gpu"],
+                    item["total_gpu"],
+                    item["node_range"],
+                ),
+            )
+        tree.grid(row=3, column=0, columnspan=8, padx=6, pady=(10, 4), sticky="ew")
+        tree.bind("<<TreeviewSelect>>", self._on_partition_table_selected)
+        self.partition_tree = tree
+        ttk.Label(parent, textvariable=self.partition_detail_var).grid(
+            row=4, column=0, columnspan=8, padx=6, pady=(0, 6), sticky="ew"
+        )
+        self._update_partition_detail()
 
     def _choose_key(self) -> None:
         path = filedialog.askopenfilename(initialdir=str(REPO_ROOT / "secrets"))
@@ -294,39 +433,33 @@ class UabiManager(tk.Tk):
     def write_config(self) -> None:
         save_json(CONFIG_PATH, self.values())
 
-    def refresh_partitions(self) -> None:
-        values = self.values()
-        threading.Thread(target=self._refresh_partitions_once, args=(values,), daemon=True).start()
+    def _on_partition_selected(self, _event: tk.Event | None = None) -> None:
+        self._update_partition_detail()
 
-    def _refresh_partitions_once(self, values: dict[str, str]) -> None:
-        try:
-            result = self.run_remote(values, "sinfo -h -o '%P' | sed 's/*//g'", timeout=20)
-        except Exception:
+    def _on_partition_table_selected(self, _event: tk.Event | None = None) -> None:
+        if not self.partition_tree:
             return
-        if result.returncode != 0:
+        selected = self.partition_tree.selection()
+        if not selected:
             return
-        partitions: list[str] = []
-        for line in result.stdout.splitlines():
-            partition = line.strip().split()[0] if line.strip() else ""
-            if partition and partition not in partitions:
-                partitions.append(partition)
-        if partitions:
-            self.messages.put(("partitions", "\n".join(partitions)))
+        partition = selected[0]
+        self.vars["partition"].set(partition)
+        self._update_partition_detail()
 
-    def _set_partition_choices(self, partitions: list[str]) -> None:
-        if not self.partition_combo:
+    def _update_partition_detail(self) -> None:
+        partition = self.vars["partition"].get().strip()
+        item = PARTITION_RESOURCE_BY_NAME.get(partition)
+        if not item:
+            self.partition_detail_var.set("선택한 파티션 자원 정보를 찾을 수 없습니다.")
             return
-        current = self.vars["partition"].get().strip()
-        choices: list[str] = []
-        for partition in [*partitions, *DEFAULT_PARTITIONS]:
-            if partition and partition not in choices:
-                choices.append(partition)
-        if current and current not in choices:
-            choices.insert(0, current)
-        self.partition_combo.configure(values=choices)
-        if not current and choices:
-            self.vars["partition"].set(choices[0])
-        self.log(f"[OK] Slurm 파티션 목록 갱신: {', '.join(choices)}")
+        if self.partition_tree and self.partition_tree.exists(partition):
+            self.partition_tree.selection_set(partition)
+            self.partition_tree.focus(partition)
+        gpu_text = "GPU 없음" if item["total_gpu"] == "0" else f'{item["gpu"]}, 총 {item["total_gpu"]}장'
+        self.partition_detail_var.set(
+            f'선택: {item["name"]} | 노드 {item["nodes"]}개 | CPU {item["cpu"]}/node | '
+            f'Mem {item["mem"]} MB/node | {gpu_text} | {item["state"]}'
+        )
 
     def save_state(self, **updates: str) -> None:
         state = load_json(STATE_PATH)
@@ -358,8 +491,6 @@ class UabiManager(tk.Tk):
                 self._set_connection_text()
             elif kind == "job":
                 self.job_var.set(text)
-            elif kind == "partitions":
-                self._set_partition_choices([line for line in text.splitlines() if line.strip()])
         self.after(100, self._drain_messages)
 
     def _tick_connection_indicator(self) -> None:
