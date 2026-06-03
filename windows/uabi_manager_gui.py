@@ -31,6 +31,7 @@ CONTAINER_SSH_PORT = "9922"
 SPINNER_FRAMES = ("\\", "|", "/", "-")
 REMOTE_PROJECT_DIRS = ("config", "container", "docs", "image", "scripts", "slurm", "tools")
 REMOTE_PROJECT_FILES = ("GOAL.md", "LICENSE", "README.md", "REQUIREMENTS.md", "manifest.json")
+DEFAULT_PARTITIONS = ("gpu1", "gpu2", "gpu3", "gpu4", "gpu5", "gpu6", "cpu1", "cpu2")
 
 DEFAULTS = {
     "uabi_user": "harry261",
@@ -167,11 +168,13 @@ class UabiManager(tk.Tk):
         self.status_var = tk.StringVar(value="대기 중(접속 불가능)")
         self.connection_var = tk.StringVar(value="\\ 대기 중(접속 불가능)")
         self.job_var = tk.StringVar(value=load_json(STATE_PATH).get("job_id", ""))
+        self.partition_combo: ttk.Combobox | None = None
         self.worker: threading.Thread | None = None
         self.stop_requested = threading.Event()
         self.messages: queue.Queue[tuple[str, str]] = queue.Queue()
 
         self._build_ui()
+        self.after(300, self.refresh_partitions)
         self.after(100, self._drain_messages)
         self.after(250, self._tick_connection_indicator)
 
@@ -195,7 +198,7 @@ class UabiManager(tk.Tk):
         for col in range(8):
             res.columnconfigure(col, weight=1)
 
-        self._entry(res, "Partition", "partition", 0, 0, width=12)
+        self._combobox(res, "Partition", "partition", 0, 0, DEFAULT_PARTITIONS, width=12)
         self._entry(res, "Time", "time", 0, 2, width=12)
         self._entry(res, "CPU", "cpus", 0, 4, width=8)
         self._entry(res, "Memory", "mem", 0, 6, width=10)
@@ -245,6 +248,34 @@ class UabiManager(tk.Tk):
         entry = ttk.Entry(parent, textvariable=self.vars[key], width=width, show=show)
         entry.grid(row=row, column=column + 1, columnspan=colspan, padx=6, pady=6, sticky="ew")
 
+    def _combobox(
+        self,
+        parent: ttk.Frame,
+        label: str,
+        key: str,
+        row: int,
+        column: int,
+        values: tuple[str, ...],
+        *,
+        width: int | None = None,
+        colspan: int = 1,
+    ) -> None:
+        choices = list(values)
+        current = self.vars[key].get().strip()
+        if current and current not in choices:
+            choices.insert(0, current)
+        ttk.Label(parent, text=label).grid(row=row, column=column, padx=6, pady=6, sticky="w")
+        combo = ttk.Combobox(
+            parent,
+            textvariable=self.vars[key],
+            values=choices,
+            width=width,
+            state="readonly",
+        )
+        combo.grid(row=row, column=column + 1, columnspan=colspan, padx=6, pady=6, sticky="ew")
+        if key == "partition":
+            self.partition_combo = combo
+
     def _choose_key(self) -> None:
         path = filedialog.askopenfilename(initialdir=str(REPO_ROOT / "secrets"))
         if path:
@@ -262,6 +293,40 @@ class UabiManager(tk.Tk):
 
     def write_config(self) -> None:
         save_json(CONFIG_PATH, self.values())
+
+    def refresh_partitions(self) -> None:
+        values = self.values()
+        threading.Thread(target=self._refresh_partitions_once, args=(values,), daemon=True).start()
+
+    def _refresh_partitions_once(self, values: dict[str, str]) -> None:
+        try:
+            result = self.run_remote(values, "sinfo -h -o '%P' | sed 's/*//g'", timeout=20)
+        except Exception:
+            return
+        if result.returncode != 0:
+            return
+        partitions: list[str] = []
+        for line in result.stdout.splitlines():
+            partition = line.strip().split()[0] if line.strip() else ""
+            if partition and partition not in partitions:
+                partitions.append(partition)
+        if partitions:
+            self.messages.put(("partitions", "\n".join(partitions)))
+
+    def _set_partition_choices(self, partitions: list[str]) -> None:
+        if not self.partition_combo:
+            return
+        current = self.vars["partition"].get().strip()
+        choices: list[str] = []
+        for partition in [*partitions, *DEFAULT_PARTITIONS]:
+            if partition and partition not in choices:
+                choices.append(partition)
+        if current and current not in choices:
+            choices.insert(0, current)
+        self.partition_combo.configure(values=choices)
+        if not current and choices:
+            self.vars["partition"].set(choices[0])
+        self.log(f"[OK] Slurm 파티션 목록 갱신: {', '.join(choices)}")
 
     def save_state(self, **updates: str) -> None:
         state = load_json(STATE_PATH)
@@ -293,6 +358,8 @@ class UabiManager(tk.Tk):
                 self._set_connection_text()
             elif kind == "job":
                 self.job_var.set(text)
+            elif kind == "partitions":
+                self._set_partition_choices([line for line in text.splitlines() if line.strip()])
         self.after(100, self._drain_messages)
 
     def _tick_connection_indicator(self) -> None:
