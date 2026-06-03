@@ -1103,6 +1103,7 @@ Host localhost
             env_export("UBAI_XRDP_PORT_IN_CONTAINER", values["xrdp_port"]),
             env_export("UBAI_CONTAINER_SSH_PORT", CONTAINER_SSH_PORT),
             env_export("UBAI_CONTAINER_SSH_PUBLIC_KEY", container_ssh_public_key),
+            env_export("UBAI_CONTAINER_ROOT_HOME", "$HOME/runtime/container-root-home", allow_home=True),
             env_export("UBAI_REVERSE_SSH_TARGET", ssh_target(values)),
             env_export("UBAI_REVERSE_SSH_PORT", GATE_PORT),
             env_export("UBAI_REVERSE_LOCAL_PORT_ON_WINDOWS", values["local_rdp_port"]),

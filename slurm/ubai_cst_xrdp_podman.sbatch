@@ -26,6 +26,7 @@ source "$UBAI_ENV_FILE"
 : "${UBAI_PODMAN_IMAGE_ARCHIVE:=$HOME/runtime/podman/ubai-cst-rocky94-xrdp.tar}"
 : "${UBAI_PODMAN_RUNTIME:=runc}"
 : "${UBAI_CONTAINERS_POLICY_JSON:=$UBAI_REPO_ROOT/config/containers-policy.json}"
+: "${UBAI_CONTAINER_ROOT_HOME:=$HOME/runtime/container-root-home}"
 
 strip_trailing_cr() {
   local name="$1"
@@ -50,15 +51,32 @@ for env_name in \
   UBAI_REVERSE_SSH_TARGET \
   UBAI_REVERSE_SSH_PORT \
   UBAI_SSH_STRICT_HOST_KEY_CHECKING \
-  UBAI_SSH_IDENTITY_FILE; do
+  UBAI_SSH_IDENTITY_FILE \
+  UBAI_CONTAINER_ROOT_HOME; do
   strip_trailing_cr "$env_name"
 done
+
+case "$UBAI_CONTAINER_ROOT_HOME" in
+  "~")
+    UBAI_CONTAINER_ROOT_HOME="$HOME"
+    ;;
+  "~/"*)
+    UBAI_CONTAINER_ROOT_HOME="$HOME/${UBAI_CONTAINER_ROOT_HOME#~/}"
+    ;;
+esac
 
 export PATH="$HOME/.local/userbin:$PATH"
 
 job_id="${SLURM_JOB_ID:-manual}"
 job_root="${SLURM_TMPDIR:-${TMPDIR:-/tmp}}/ubai-cst-xrdp-${job_id}"
 mkdir -p "$job_root/logs"
+mkdir -p "$UBAI_CONTAINER_ROOT_HOME"
+chmod 700 "$UBAI_CONTAINER_ROOT_HOME" >/dev/null 2>&1 || true
+if [ -e "$HOME/container-home" ] && [ ! -L "$HOME/container-home" ]; then
+  echo "[WARN] $HOME/container-home already exists and is not a symlink; leaving it unchanged."
+else
+  ln -sfn "$UBAI_CONTAINER_ROOT_HOME" "$HOME/container-home"
+fi
 export XDG_RUNTIME_DIR="$job_root/xdg-runtime"
 export XDG_CONFIG_HOME="$job_root/xdg-config"
 podman_runroot="$job_root/podman-runroot"
@@ -77,6 +95,8 @@ echo "[INFO] Job root: $job_root"
 echo "[INFO] Node: $(hostname)"
 echo "[INFO] Podman image: $UBAI_PODMAN_IMAGE"
 echo "[INFO] Reverse target: $UBAI_REVERSE_SSH_TARGET"
+echo "[INFO] Container /root home: $UBAI_CONTAINER_ROOT_HOME"
+echo "[INFO] Host shortcut: $HOME/container-home"
 
 container_name="ubai-cst-xrdp-${job_id}"
 podman_cmd=(
@@ -135,6 +155,7 @@ podman_args=(
   -e "UBAI_CONTAINER_READY_FILE=/work/xrdp.ready"
   -v "$UBAI_REPO_ROOT/container/start_xrdp_container.sh:/usr/local/bin/start_xrdp_container.sh:ro"
   -v "$job_root:/work"
+  -v "$UBAI_CONTAINER_ROOT_HOME:/root"
 )
 
 if [ -n "${UBAI_EXTRA_MOUNTS:-}" ]; then

@@ -24,15 +24,35 @@ source "$UBAI_ENV_FILE"
 : "${UBAI_REVERSE_SSH_PORT:=22}"
 : "${UBAI_SSH_STRICT_HOST_KEY_CHECKING:=accept-new}"
 : "${UBAI_KEEP_CONTAINER_AFTER_EXIT:=0}"
+: "${UBAI_CONTAINER_ROOT_HOME:=$HOME/runtime/container-root-home}"
+
+case "$UBAI_CONTAINER_ROOT_HOME" in
+  "~")
+    UBAI_CONTAINER_ROOT_HOME="$HOME"
+    ;;
+  "~/"*)
+    UBAI_CONTAINER_ROOT_HOME="$HOME/${UBAI_CONTAINER_ROOT_HOME#~/}"
+    ;;
+esac
 
 job_id="${SLURM_JOB_ID:-manual}"
 job_root="${SLURM_TMPDIR:-${TMPDIR:-/tmp}}/ubai-cst-xrdp-${job_id}"
 mkdir -p "$job_root/logs"
+mkdir -p "$UBAI_CONTAINER_ROOT_HOME"
+chmod 700 "$UBAI_CONTAINER_ROOT_HOME" >/dev/null 2>&1 || true
+
+if [ -e "$HOME/container-home" ] && [ ! -L "$HOME/container-home" ]; then
+  echo "[WARN] $HOME/container-home already exists and is not a symlink; leaving it unchanged."
+else
+  ln -sfn "$UBAI_CONTAINER_ROOT_HOME" "$HOME/container-home"
+fi
 
 echo "[INFO] Job root: $job_root"
 echo "[INFO] Node: $(hostname)"
 echo "[INFO] Image: $UBAI_IMAGE"
 echo "[INFO] Reverse target: $UBAI_REVERSE_SSH_TARGET"
+echo "[INFO] Container /root home: $UBAI_CONTAINER_ROOT_HOME"
+echo "[INFO] Host shortcut: $HOME/container-home"
 
 tcp_ready() {
   local host="$1"
@@ -108,6 +128,7 @@ fi
 mounts=(
   --mount "$UBAI_REPO_ROOT/container/start_xrdp_container.sh:/usr/local/bin/start_xrdp_container.sh"
   --mount "$job_root:/work"
+  --mount "$UBAI_CONTAINER_ROOT_HOME:/root"
 )
 
 if [ -n "${UBAI_EXTRA_MOUNTS:-}" ]; then

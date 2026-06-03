@@ -72,6 +72,22 @@ ssh://root@localhost:9922
 
 무인증 root SSH는 열지 않는다. GUI가 내부 전용 key를 생성하고 root `authorized_keys`에 주입하므로 사용자가 reverse key나 container key를 직접 관리할 필요가 없다. key 인증이 실패하면 XRDP root 비밀번호를 fallback으로 사용할 수 있다.
 
+## Container Home
+
+컨테이너 안의 `/root`는 UBAI 홈 디렉토리 아래의 다음 경로에 마운트된다.
+
+```text
+~/runtime/container-root-home
+```
+
+Slurm job은 실행 시 이 디렉토리를 만들고, 편하게 접근할 수 있도록 다음 심볼릭 링크도 만든다.
+
+```text
+~/container-home -> ~/runtime/container-root-home
+```
+
+따라서 XRDP나 VSCode에서 `/root`에 저장한 파일은 job을 껐다 켜도 `~/container-home`에서 다시 확인할 수 있다.
+
 ## Manual Flow
 
 GUI 없이 직접 실행할 때:
