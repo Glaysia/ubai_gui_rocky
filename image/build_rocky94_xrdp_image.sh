@@ -58,35 +58,33 @@ echo "[INFO] Configuring dnf mirrors:"
 echo "       Rocky: $rocky_mirror"
 echo "       EPEL : $epel_mirror"
 
+repo_backup="/etc/yum.repos.d/ubai-disabled-repos"
+mkdir -p "$repo_backup"
 for repo in /etc/yum.repos.d/*.repo; do
   [ -f "$repo" ] || continue
-  sed -ri \
-    -e 's|^enabled=1|enabled=0|g' \
-    -e 's|^mirrorlist=|#mirrorlist=|g' \
-    -e 's|^metalink=|#metalink=|g' \
-    "$repo"
+  mv -f "$repo" "$repo_backup/$(basename "$repo")"
 done
 
 cat > /etc/yum.repos.d/ubai-kaist-rocky.repo <<EOF
-[baseos]
+[ubai-baseos]
 name=Rocky Linux 9 BaseOS - KAIST
 baseurl=${rocky_mirror}/BaseOS/x86_64/os/
 enabled=1
 gpgcheck=0
 
-[appstream]
+[ubai-appstream]
 name=Rocky Linux 9 AppStream - KAIST
 baseurl=${rocky_mirror}/AppStream/x86_64/os/
 enabled=1
 gpgcheck=0
 
-[crb]
+[ubai-crb]
 name=Rocky Linux 9 CRB - KAIST
 baseurl=${rocky_mirror}/CRB/x86_64/os/
 enabled=1
 gpgcheck=0
 
-[extras]
+[ubai-extras]
 name=Rocky Linux 9 Extras - KAIST
 baseurl=${rocky_mirror}/extras/x86_64/os/
 enabled=1
@@ -128,23 +126,19 @@ run_dnf() {
 
 UBAI_DNF_TIMEOUT_SECONDS=240 run_dnf install dnf-plugins-core epel-release
 
+for repo in /etc/yum.repos.d/*.repo; do
+  [ -f "$repo" ] || continue
+  [ "$repo" = "/etc/yum.repos.d/ubai-kaist-rocky.repo" ] && continue
+  mv -f "$repo" "$repo_backup/$(basename "$repo")"
+done
+
 cat > /etc/yum.repos.d/ubai-kaist-epel.repo <<EOF
-[epel]
+[ubai-epel]
 name=Extra Packages for Enterprise Linux 9 - KAIST
 baseurl=${epel_mirror}/Everything/x86_64/
 enabled=1
 gpgcheck=0
 EOF
-
-for repo in /etc/yum.repos.d/epel*.repo; do
-  [ -f "$repo" ] || continue
-  [ "$repo" = "/etc/yum.repos.d/ubai-kaist-epel.repo" ] && continue
-  sed -ri \
-    -e 's|^enabled=1|enabled=0|g' \
-    -e 's|^mirrorlist=|#mirrorlist=|g' \
-    -e 's|^metalink=|#metalink=|g' \
-    "$repo"
-done
 
 dnf clean all || true
 run_dnf makecache --refresh
@@ -164,7 +158,7 @@ run_dnf install \
   run_dnf groupinstall "Xfce"
 }
 
-run_dnf install google-noto-sans-cjk-fonts || true
+run_dnf install google-noto-sans-cjk-ttc-fonts || true
 
 if [ "${UBAI_BUILD_INCLUDE_CST_DEPS:-0}" = "1" ]; then
   run_dnf install \
