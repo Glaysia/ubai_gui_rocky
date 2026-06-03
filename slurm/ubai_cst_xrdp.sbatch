@@ -117,10 +117,19 @@ if [ -n "${UBAI_EXTRA_MOUNTS:-}" ]; then
   done
 fi
 
+container_env=(
+  "UBAI_XRDP_PASSWORD=${UBAI_XRDP_PASSWORD:-1q2w3e}"
+  "UBAI_XRDP_PORT_IN_CONTAINER=$UBAI_XRDP_PORT_IN_CONTAINER"
+  "UBAI_CONTAINER_SSH_PORT=$UBAI_CONTAINER_SSH_PORT"
+  "UBAI_CONTAINER_SSH_PUBLIC_KEY=${UBAI_CONTAINER_SSH_PUBLIC_KEY:-}"
+  "UBAI_CONTAINER_LOG_DIR=/work/logs"
+  "UBAI_CONTAINER_READY_FILE=/work/xrdp.ready"
+)
+
 echo "[INFO] Starting xrdp container..."
 ENROOT_RUNTIME_PATH="$enroot_base/runtime" ENROOT_CACHE_PATH="$enroot_base/cache" ENROOT_DATA_PATH="$enroot_base/data" ENROOT_TEMP_PATH="$enroot_base/tmp" \
   enroot start --root --rw "${mounts[@]}" "$container_name" \
-  /bin/bash /usr/local/bin/start_xrdp_container.sh \
+  /usr/bin/env "${container_env[@]}" /bin/bash /usr/local/bin/start_xrdp_container.sh \
   >"$job_root/logs/container.stdout" 2>"$job_root/logs/container.stderr" &
 container_pid=$!
 
