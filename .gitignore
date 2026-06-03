@@ -1,5 +1,8 @@
 config/session.env
-secrets/
+secrets/*
+!secrets/original_key/
+secrets/original_key/*
+!secrets/original_key/README.md
 runtime/
 logs/
 *.sqsh

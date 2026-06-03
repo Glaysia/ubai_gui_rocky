@@ -36,6 +36,17 @@ python windows\ubai_manager_gui.py
 
 GUI에서 사용자가 직접 넣는 값은 UBAI 사용자명과 UBAI 로그인 SSH key, root 비밀번호, 할당 자원 정도이다. 게이트 주소는 `172.16.10.36:22`로 고정되어 있고, 게이트 릴레이 key와 컨테이너 SSH key는 내부에서 자동 관리된다.
 
+처음 실행하거나 다른 PC에서 테스트할 때는 다음 두 파일을 준비하면 된다.
+
+```text
+secrets\original_key\key.pem
+secrets\original_key\username
+```
+
+`key.pem`에는 UBAI 게이트 노드 로그인용 개인 SSH key를 넣고, `username`에는 UBAI 사용자명을 한 줄로 적는다. GUI는 이 두 파일을 기본 접속 정보로 사용한다. Windows OpenSSH가 private key 권한을 문제 삼는 경우가 많으므로, GUI는 접속 직전에 `key.pem` 권한을 자동으로 좁혀 `UNPROTECTED PRIVATE KEY FILE` 오류를 방지한다.
+
+실제 key와 username 파일은 git에 커밋하지 않는다. 폴더 위치를 헷갈리지 않도록 `secrets\original_key\README.md`만 repository에 남긴다.
+
 주요 버튼:
 
 - `컨테이너 켜기`: PC -> 게이트 local forward를 열고, Slurm XRDP job을 제출한다.

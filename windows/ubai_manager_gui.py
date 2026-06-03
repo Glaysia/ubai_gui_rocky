@@ -19,6 +19,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 STATE_ROOT = REPO_ROOT / "secrets" / "ubai-ui"
 CONFIG_PATH = STATE_ROOT / "config.json"
 STATE_PATH = STATE_ROOT / "state.json"
+ORIGINAL_KEY_DIR = REPO_ROOT / "secrets" / "original_key"
+ORIGINAL_KEY_FILE = ORIGINAL_KEY_DIR / "key.pem"
+ORIGINAL_USERNAME_FILE = ORIGINAL_KEY_DIR / "username"
 GATE_HOST = "172.16.10.36"
 GATE_PORT = "22"
 REMOTE_REPO = "~/ubai_gui"
@@ -121,8 +124,8 @@ PARTITION_RESOURCE_BY_NAME = {item["name"]: item for item in PARTITION_RESOURCES
 DEFAULT_PARTITIONS = tuple(item["name"] for item in PARTITION_RESOURCES)
 
 DEFAULTS = {
-    "ubai_user": "harry261",
-    "ubai_key": "secrets/gate-node-ssh/keys/id_ed25519",
+    "ubai_user": "",
+    "ubai_key": "secrets/original_key/key.pem",
     "local_rdp_port": "9999",
     "xrdp_port": "33989",
     "xrdp_password": "1q2w3e",
@@ -172,6 +175,17 @@ def load_config() -> dict[str, str]:
     return data
 
 
+def load_original_key_config() -> dict[str, str]:
+    data: dict[str, str] = {}
+    if ORIGINAL_USERNAME_FILE.exists():
+        username = ORIGINAL_USERNAME_FILE.read_text(encoding="utf-8", errors="replace").strip()
+        if username:
+            data["ubai_user"] = username.splitlines()[0].strip()
+    if ORIGINAL_KEY_FILE.exists():
+        data["ubai_key"] = "secrets/original_key/key.pem"
+    return data
+
+
 def repo_relative(path_text: str) -> Path:
     path = Path(path_text)
     if path.is_absolute():
@@ -193,7 +207,21 @@ def env_export(name: str, value: str, *, allow_home: bool = False) -> str:
 
 
 def ssh_target(values: dict[str, str]) -> str:
-    return f'{values["ubai_user"]}@{GATE_HOST}'
+    user = values.get("ubai_user", "").strip()
+    if not user:
+        raise RuntimeError("UBAI username이 비어 있습니다. secrets/original_key/username 파일에 사용자명을 적어 주세요.")
+    return f"{user}@{GATE_HOST}"
+
+
+def gate_identity_file(values: dict[str, str]) -> Path:
+    key_text = values.get("ubai_key", "").strip()
+    if not key_text:
+        raise RuntimeError("UBAI SSH key 경로가 비어 있습니다. secrets/original_key/key.pem 파일을 넣어 주세요.")
+    key = repo_relative(key_text)
+    if not key.exists():
+        raise RuntimeError(f"UBAI SSH key를 찾을 수 없습니다: {key}")
+    restrict_private_key(key)
+    return key
 
 
 def local_port_open(port: int) -> bool:
@@ -218,12 +246,22 @@ def restrict_private_key(path: Path) -> None:
     user = os.environ.get("USERNAME")
     if not user:
         return
+    computer = os.environ.get("COMPUTERNAME", "")
     commands = [
         ["icacls", str(path), "/inheritance:r"],
+        ["icacls", str(path), "/remove:g", "*S-1-1-0"],
+        ["icacls", str(path), "/remove:g", "*S-1-5-11"],
+        ["icacls", str(path), "/remove:g", "*S-1-5-32-545"],
+        ["icacls", str(path), "/remove:g", "Everyone"],
+        ["icacls", str(path), "/remove:g", "Users"],
+        ["icacls", str(path), "/remove:g", "Authenticated Users"],
+        ["icacls", str(path), "/remove:g", "CodexSandboxUsers"],
         ["icacls", str(path), "/grant:r", f"{user}:F"],
         ["icacls", str(path), "/grant:r", "NT AUTHORITY\\SYSTEM:F"],
         ["icacls", str(path), "/grant:r", "BUILTIN\\Administrators:F"],
     ]
+    if computer:
+        commands.insert(-3, ["icacls", str(path), "/remove:g", f"{computer}\\CodexSandboxUsers"])
     for command in commands:
         subprocess.run(command, text=True, capture_output=True, check=False)
 
@@ -272,6 +310,7 @@ class UbaiManager(tk.Tk):
 
         saved = DEFAULTS.copy()
         saved.update({key: value for key, value in load_config().items() if key in DEFAULTS})
+        saved.update({key: value for key, value in load_original_key_config().items() if key in DEFAULTS})
         self.vars = {key: tk.StringVar(value=value) for key, value in saved.items()}
         self.operation_state = "대기 중"
         self.connectable = False
@@ -726,7 +765,7 @@ fi
         worker.start()
 
     def ssh_base(self, values: dict[str, str]) -> list[str]:
-        key = repo_relative(values["ubai_key"])
+        key = gate_identity_file(values)
         return [
             "ssh.exe",
             "-i",
@@ -742,7 +781,7 @@ fi
         ]
 
     def scp_base(self, values: dict[str, str]) -> list[str]:
-        key = repo_relative(values["ubai_key"])
+        key = gate_identity_file(values)
         return [
             "scp.exe",
             "-i",
