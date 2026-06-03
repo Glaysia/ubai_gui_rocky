@@ -16,7 +16,9 @@ source "$UABI_ENV_FILE"
 : "${UABI_REPO_ROOT:=$(cd "$(dirname "$0")/.." && pwd)}"
 : "${UABI_PODMAN_IMAGE:=localhost/uabi-cst-rocky94-xrdp:latest}"
 : "${UABI_XRDP_PORT_IN_CONTAINER:=3389}"
+: "${UABI_CONTAINER_SSH_PORT:=9922}"
 : "${UABI_REVERSE_LOCAL_PORT_ON_WINDOWS:=9999}"
+: "${UABI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS:=9922}"
 : "${UABI_REVERSE_BIND_HOST:=127.0.0.1}"
 : "${UABI_REVERSE_SSH_TARGET:?UABI_REVERSE_SSH_TARGET is required}"
 : "${UABI_REVERSE_SSH_PORT:=22}"
@@ -38,10 +40,12 @@ for env_name in \
   UABI_PODMAN_IMAGE_ARCHIVE \
   UABI_PODMAN_RUNTIME \
   UABI_CONTAINERS_POLICY_JSON \
-  UABI_XRDP_USER \
   UABI_XRDP_PASSWORD \
   UABI_XRDP_PORT_IN_CONTAINER \
+  UABI_CONTAINER_SSH_PORT \
+  UABI_CONTAINER_SSH_PUBLIC_KEY \
   UABI_REVERSE_LOCAL_PORT_ON_WINDOWS \
+  UABI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS \
   UABI_REVERSE_BIND_HOST \
   UABI_REVERSE_SSH_TARGET \
   UABI_REVERSE_SSH_PORT \
@@ -123,9 +127,10 @@ podman_args=(
   --network host
   --tmpfs /run
   --tmpfs /tmp
-  -e "UABI_XRDP_USER=${UABI_XRDP_USER:-user}"
   -e "UABI_XRDP_PASSWORD=${UABI_XRDP_PASSWORD:-1q2w3e}"
   -e "UABI_XRDP_PORT_IN_CONTAINER=$UABI_XRDP_PORT_IN_CONTAINER"
+  -e "UABI_CONTAINER_SSH_PORT=$UABI_CONTAINER_SSH_PORT"
+  -e "UABI_CONTAINER_SSH_PUBLIC_KEY=${UABI_CONTAINER_SSH_PUBLIC_KEY:-}"
   -e "UABI_CONTAINER_LOG_DIR=/work/logs"
   -e "UABI_CONTAINER_READY_FILE=/work/xrdp.ready"
   -v "$UABI_REPO_ROOT/container/start_xrdp_container.sh:/usr/local/bin/start_xrdp_container.sh:ro"
@@ -177,6 +182,7 @@ ssh_args=(
   -S "$tunnel_ctl"
   -fnNT
   -R "${UABI_REVERSE_BIND_HOST}:${UABI_REVERSE_LOCAL_PORT_ON_WINDOWS}:127.0.0.1:${UABI_XRDP_PORT_IN_CONTAINER}"
+  -R "${UABI_REVERSE_BIND_HOST}:${UABI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS}:127.0.0.1:${UABI_CONTAINER_SSH_PORT}"
 )
 
 if [ -n "${UABI_SSH_IDENTITY_FILE:-}" ]; then
@@ -189,7 +195,9 @@ echo "[OK] Reverse tunnel established."
 echo "[INFO] In relay mode, keep Windows local forward open:"
 echo "       ssh -N -L 9999:127.0.0.1:${UABI_REVERSE_LOCAL_PORT_ON_WINDOWS} ${UABI_REVERSE_SSH_TARGET}"
 echo "[INFO] Then open mstsc.exe -> 127.0.0.1:9999"
-echo "[INFO] XRDP user: ${UABI_XRDP_USER:-user}"
+echo "[INFO] XRDP user: root"
+echo "[INFO] VSCode Remote-SSH target:"
+echo "       ssh://root@localhost:${UABI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS}"
 
 while kill -0 "$container_pid" >/dev/null 2>&1; do
   if ! ssh -S "$tunnel_ctl" -O check "$UABI_REVERSE_SSH_TARGET" >/dev/null 2>&1; then

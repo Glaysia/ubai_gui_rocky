@@ -16,7 +16,9 @@ source "$UABI_ENV_FILE"
 : "${UABI_REPO_ROOT:=$(cd "$(dirname "$0")/.." && pwd)}"
 : "${UABI_IMAGE:?UABI_IMAGE is required}"
 : "${UABI_XRDP_PORT_IN_CONTAINER:=3389}"
+: "${UABI_CONTAINER_SSH_PORT:=9922}"
 : "${UABI_REVERSE_LOCAL_PORT_ON_WINDOWS:=9999}"
+: "${UABI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS:=9922}"
 : "${UABI_REVERSE_BIND_HOST:=127.0.0.1}"
 : "${UABI_REVERSE_SSH_TARGET:?UABI_REVERSE_SSH_TARGET is required}"
 : "${UABI_REVERSE_SSH_PORT:=10022}"
@@ -110,6 +112,7 @@ ssh_args=(
   -S "$tunnel_ctl"
   -fnNT
   -R "${UABI_REVERSE_BIND_HOST}:${UABI_REVERSE_LOCAL_PORT_ON_WINDOWS}:127.0.0.1:${UABI_XRDP_PORT_IN_CONTAINER}"
+  -R "${UABI_REVERSE_BIND_HOST}:${UABI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS}:127.0.0.1:${UABI_CONTAINER_SSH_PORT}"
 )
 
 if [ -n "${UABI_SSH_IDENTITY_FILE:-}" ]; then
@@ -121,7 +124,9 @@ ssh "${ssh_args[@]}" "$UABI_REVERSE_SSH_TARGET"
 echo "[OK] Reverse tunnel established."
 echo "[INFO] On Windows, open mstsc.exe and connect to:"
 echo "       127.0.0.1:${UABI_REVERSE_LOCAL_PORT_ON_WINDOWS}"
-echo "[INFO] XRDP user: ${UABI_XRDP_USER:-user}"
+echo "[INFO] XRDP user: root"
+echo "[INFO] VSCode Remote-SSH target:"
+echo "       ssh://root@localhost:${UABI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS}"
 
 while kill -0 "$container_pid" >/dev/null 2>&1; do
   if ! ssh -S "$tunnel_ctl" -O check "$UABI_REVERSE_SSH_TARGET" >/dev/null 2>&1; then

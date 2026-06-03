@@ -14,8 +14,10 @@ UABI 계산노드
 → enroot 컨테이너 실행
 → Rocky Linux 9.4 환경 구성
 → xrdp server 실행
+→ 컨테이너 내부 sshd 실행
 → 사용자 Windows PC로 SSH reverse tunnel 생성
 → Windows 기본 원격 데스크톱으로 접속
+→ VSCode Remote-SSH로 컨테이너 쉘 접속
 → CST Studio Suite GUI 또는 solver 실행
 ```
 
@@ -57,6 +59,11 @@ Windows PC 127.0.0.1:9999
 ← SSH reverse tunnel
 ← UABI 계산노드 컨테이너 127.0.0.1:3389
 ← xrdp desktop
+
+Windows PC 127.0.0.1:9922
+← SSH reverse tunnel
+← UABI 계산노드 컨테이너 127.0.0.1:9922
+← container sshd
 ```
 
 사용자는 계산노드의 실제 IP나 방화벽을 몰라도 됩니다.
@@ -91,8 +98,8 @@ nano config/session.env
 UABI_REVERSE_SSH_TARGET="Windows사용자명@Windows주소"
 UABI_REVERSE_SSH_PORT="10022"
 UABI_REVERSE_LOCAL_PORT_ON_WINDOWS="9999"
+UABI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS="9922"
 
-UABI_XRDP_USER="user"
 UABI_XRDP_PASSWORD="1q2w3e"
 ```
 
@@ -118,9 +125,21 @@ mstsc.exe
 로그인:
 
 ```text
-username: user
+username: root
 password: 1q2w3e
 ```
+
+### 6. VSCode로 컨테이너 SSH 접속
+
+GUI를 통해 실행하면 Windows의 SSH 설정에 내부 전용 key가 자동 등록됩니다.
+VSCode Remote-SSH에서는 다음 주소를 사용할 수 있습니다.
+
+```text
+ssh://root@uabi-container
+```
+
+포트 자체는 Windows 로컬 `127.0.0.1:9922`입니다. `ssh://root@localhost:9922`로도 같은 컨테이너 sshd에 연결됩니다.
+보안을 위해 무인증 root SSH는 열지 않고, GUI가 자동 생성한 key를 컨테이너 root `authorized_keys`에 넣습니다. 사용자가 key 파일을 직접 관리할 필요는 없습니다.
 
 ## CST 설치에 대해
 
@@ -161,8 +180,9 @@ CST GUI 접속 환경이 먼저 안정적으로 작동하는지 확인한 뒤, C
 
 - Rocky Linux 9.4 enroot 이미지 빌드
 - desktop environment와 xrdp 설치
+- 컨테이너 내부 sshd 9922 실행
 - Slurm job에서 xrdp 컨테이너 실행
-- Slurm job에서 SSH reverse tunnel 실행
+- Slurm job에서 RDP 9999와 SSH 9922 reverse tunnel 실행
 - Windows helper로 sshd와 방화벽 준비
 - CST 설치 hook 위치 제공
 
@@ -170,6 +190,7 @@ CST GUI 접속 환경이 먼저 안정적으로 작동하는지 확인한 뒤, C
 
 - UABI 계산노드에서 `rockylinux:9.4` import 가능 여부
 - xrdp 접속 안정성
+- VSCode Remote-SSH 접속 안정성
 - CST installer silent install 옵션
 - license server 접속 가능 여부
 - OpenGL renderer 상태

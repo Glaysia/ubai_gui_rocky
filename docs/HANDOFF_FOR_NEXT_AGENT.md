@@ -18,9 +18,11 @@ Proposed solution:
 - `docker://rockylinux:9.4`
 - desktop environment plus OpenGL/X11 and CST dependencies
 - xrdp server inside container
+- sshd on `127.0.0.1:9922` inside container for VSCode Remote-SSH
 - SSH reverse tunnel from compute node to Windows PC
 - Windows helper script for project-local OpenSSH sshd
 - Windows Remote Desktop Client connects to localhost forwarded port
+- VSCode Remote-SSH connects to localhost forwarded port
 
 ## Important design decisions
 
@@ -51,21 +53,22 @@ If Windows PC is behind NAT and not reachable, this will fail. Add a relay mode 
    - `tigervnc-server`
    - `Xfce` group
    - `openmotif` or `motif`
-3. If xrdp Xorg backend fails, implement forced Xvnc backend.
-4. Add explicit xrdp diagnostics.
-5. Validate Windows helper on Windows 11.
-6. Add SSH public-key setup guide.
-7. Add relay-server mode.
-8. CST integration:
+3. xrdp is forced to the Xvnc backend because Xorg backend failed under the rootless container runtime.
+4. Container sshd uses root plus GUI-managed public key. Do not enable unauthenticated root SSH.
+5. `scripts/submit_xrdp_job.sh` defaults to enroot without checking the submit host. UABI gate has podman but no enroot; compute nodes have enroot but no podman.
+6. Add explicit xrdp/sshd diagnostics.
+7. Validate Windows helper on Windows 11.
+8. Add relay-server mode.
+9. CST integration:
    - collect actual CST Linux installer filename
    - identify silent install mode
    - add license server env var mapping
    - add launcher wrapper
-9. OpenGL path:
+10. OpenGL path:
    - identify whether UABI has GPU compute nodes
    - test `glxinfo`
    - optionally add VirtualGL/TurboVNC variant
-10. Security:
+11. Security:
    - restrict firewall remote address
    - never log xrdp password
    - support SSH key only mode
@@ -73,6 +76,7 @@ If Windows PC is behind NAT and not reachable, this will fail. Add a relay mode 
 ## Known risks
 
 - xrdp inside enroot may require adjustments because enroot is not a full systemd VM.
+- sshd inside enroot may require host key/runtime directory fixes in site images.
 - xrdp package defaults may expect runtime directories not present in a container.
 - SELinux is likely irrelevant inside enroot but PAM configs can still bite.
 - CST GUI may run slowly under software OpenGL.
@@ -95,17 +99,20 @@ On Windows:
 ```powershell
 python windows\uabi_reverse_helper.py --port 10022 --local-rdp-port 9999
 netstat -ano | findstr 9999
+netstat -ano | findstr 9922
 mstsc.exe
+ssh root@uabi-container
 ```
 
 If `mstsc` reaches login screen but desktop is black:
 - xrdp auth works
 - session backend is broken
 - inspect `/var/log/xrdp-sesman.log`
-- force Xvnc backend or fix `.Xclients`
+- keep the forced Xvnc backend and root `.Xclients` path working
 
 If tunnel fails:
 - check Windows sshd reachable from UABI
 - check firewall
 - try `ssh -vvv WINDOWS_USER@WINDOWS_HOST -p 10022`
 - verify Windows account password/key auth
+- check both reverse ports, 9999 for RDP and 9922 for container SSH

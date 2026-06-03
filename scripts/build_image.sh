@@ -14,9 +14,28 @@ source "$env_file"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
 
-if command -v enroot >/dev/null 2>&1; then
-  exec "$repo_root/image/build_rocky94_xrdp_image.sh"
-fi
-
-echo "[WARN] enroot not found; falling back to rootless podman." >&2
-exec "$repo_root/image/build_podman_rocky94_xrdp_image.sh"
+backend="${UABI_IMAGE_BACKEND:-auto}"
+case "$backend" in
+  auto)
+    if command -v enroot >/dev/null 2>&1; then
+      exec "$repo_root/image/build_rocky94_xrdp_image.sh"
+    fi
+    echo "[INFO] enroot is not available on this host; using podman image build backend." >&2
+    exec "$repo_root/image/build_podman_rocky94_xrdp_image.sh"
+    ;;
+  enroot)
+    if ! command -v enroot >/dev/null 2>&1; then
+      echo "[ERROR] enroot not found on this host. Run the build on an enroot-capable compute node or set UABI_IMAGE_BACKEND=podman." >&2
+      exit 127
+    fi
+    exec "$repo_root/image/build_rocky94_xrdp_image.sh"
+    ;;
+  podman)
+    exec "$repo_root/image/build_podman_rocky94_xrdp_image.sh"
+    ;;
+  *)
+    echo "[ERROR] Unsupported UABI_IMAGE_BACKEND: $backend" >&2
+    echo "        Use auto, enroot, or podman." >&2
+    exit 2
+    ;;
+esac

@@ -13,7 +13,7 @@ RUN sed -ri \
 RUN dnf -y install --allowerasing \
       bash findutils procps-ng which tar gzip bzip2 xz unzip zip \
       hostname iproute iputils net-tools lsof less vim nano sudo shadow-utils \
-      openssh-clients ca-certificates wget rsync git python3
+      openssh-clients openssh-server ca-certificates wget rsync git python3
 
 RUN dnf -y groupinstall "Xfce" || true
 

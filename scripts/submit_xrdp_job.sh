@@ -24,14 +24,23 @@ sbatch_args=()
 
 mkdir -p "$repo_root/logs"
 
-if command -v enroot >/dev/null 2>&1; then
-  sbatch_file="$repo_root/slurm/uabi_cst_xrdp.sbatch"
-else
-  echo "[WARN] enroot not found; submitting podman fallback job." >&2
-  sbatch_file="$repo_root/slurm/uabi_cst_xrdp_podman.sbatch"
-fi
+backend="${UABI_CONTAINER_BACKEND:-enroot}"
+case "$backend" in
+  enroot)
+    sbatch_file="$repo_root/slurm/uabi_cst_xrdp.sbatch"
+    ;;
+  podman)
+    sbatch_file="$repo_root/slurm/uabi_cst_xrdp_podman.sbatch"
+    ;;
+  *)
+    echo "[ERROR] Unsupported UABI_CONTAINER_BACKEND: $backend" >&2
+    echo "        Use enroot or podman." >&2
+    exit 2
+    ;;
+esac
 
 echo "[INFO] Submitting XRDP job with env: $abs_env_file"
+echo "[INFO] Container backend: $backend"
 sbatch "${sbatch_args[@]}" \
   --export=ALL,UABI_ENV_FILE="$abs_env_file",UABI_REPO_ROOT="$repo_root" \
   "$sbatch_file"

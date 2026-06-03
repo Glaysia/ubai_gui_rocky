@@ -16,15 +16,18 @@ UABI/HPC 계산노드에서 `enroot + Rocky Linux 9.4 + xrdp`로 CST Studio Suit
 Windows PC
   ├─ project-local OpenSSH sshd.exe, not Windows sshd service
   └─ mstsc.exe → 127.0.0.1:9999
+  └─ VSCode Remote-SSH → root@localhost:9922
 
 UABI compute node
   └─ Slurm job
       └─ enroot container, Rocky Linux 9.4
           ├─ XFCE desktop
           ├─ xrdp/xrdp-sesman
+          ├─ sshd on 127.0.0.1:9922
           ├─ OpenGL/X11 runtime
           ├─ CST Studio Suite, user-provided
           └─ ssh -p 10022 -R 127.0.0.1:9999:127.0.0.1:3389 WindowsPC
+          └─ ssh -p 10022 -R 127.0.0.1:9922:127.0.0.1:9922 WindowsPC
 ```
 
 ## Quick start
@@ -49,13 +52,15 @@ python windows\uabi_manager_gui.py
 
 GUI에서는 다음을 할 수 있다.
 
-- `가상 컴퓨터 켜기`: 로컬 RDP 포워드를 열고 UABI Slurm XRDP job을 제출한다.
-- `끄기`: 현재 UABI XRDP job을 `scancel`하고 로컬 포워드를 정리한다.
+- `컨테이너 켜기`: 로컬 RDP 포워드를 열고 UABI Slurm XRDP job을 제출한다.
+- `컨테이너 끄기`: 현재 UABI XRDP job을 `scancel`하고 로컬 포워드를 정리한다.
 - `접속하기`: `mstsc.exe`를 `127.0.0.1:<local-rdp-port>`로 실행한다.
 - `상태 새로고침`: `squeue`, `scontrol`, `sstat`, job log, 게이트 릴레이 포트 상태를 보여준다.
 
-할당 자원은 GUI에서 partition, time, CPU, memory, GPU 개수를 입력한다.
-설정은 `secrets/uabi-ui/config.json`에 저장된다.
+GUI에서 사용자가 직접 넣는 접속 정보는 UABI 사용자명과 UABI 로그인 SSH key뿐이다.
+게이트 주소 `172.16.10.36:22`, reverse tunnel key, 컨테이너 root SSH key는 GUI가 내부에서 자동 관리한다.
+할당 자원은 partition, time, CPU, memory, GPU 개수를 입력한다.
+하단 상태줄은 `켜는 중(접속 불가능)`처럼 현재 RDP 접속 가능 여부를 명시한다.
 
 ### 2. UABI에서 설정 파일 작성
 
@@ -72,10 +77,11 @@ UABI_IMAGE="$HOME/runtime/enroot/uabi-cst-rocky94-xrdp.sqsh"
 UABI_REVERSE_SSH_TARGET="WINDOWS_USER@WINDOWS_HOST_OR_IP"
 UABI_REVERSE_SSH_PORT="10022"
 UABI_REVERSE_LOCAL_PORT_ON_WINDOWS="9999"
+UABI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS="9922"
 UABI_XRDP_PORT_IN_CONTAINER="3389"
-UABI_SSH_IDENTITY_FILE="/path/on/uabi/uabi_reverse_ed25519"
+UABI_CONTAINER_SSH_PORT="9922"
+UABI_SSH_IDENTITY_FILE=""
 
-UABI_XRDP_USER="user"
 UABI_XRDP_PASSWORD="1q2w3e"
 
 UABI_CST_INSTALLER_PATH=""
@@ -99,9 +105,17 @@ UABI_CST_LICENSE_SERVER=""
 ```text
 mstsc.exe
 Computer: 127.0.0.1:9999
-Username: user
+Username: root
 Password: 1q2w3e
 ```
+
+VSCode Remote-SSH도 동시에 열린다. GUI로 컨테이너를 켜면 `%USERPROFILE%\.ssh\config`에 `uabi-container` alias와 내부 전용 key가 자동 등록된다.
+
+```text
+ssh://root@uabi-container
+```
+
+로 접속하는 것을 권장한다. `ssh://root@localhost:9922`도 같은 포트로 연결된다. 인증은 암호화된 터널 위에서 다시 OpenSSH가 처리하며, 무인증 root SSH는 열지 않는다. 대신 GUI가 생성한 내부 key를 root `authorized_keys`에 자동 주입하므로 사용자가 key 파일을 직접 관리할 필요가 없다. key 인증이 실패하면 root 비밀번호 `UABI_XRDP_PASSWORD`를 fallback으로 사용할 수 있다.
 
 ## CST 설치
 
@@ -126,7 +140,7 @@ image/install_cst_placeholder.sh
   CST 설치 hook. 실제 기관 설치 파일에 맞춰 수정
 
 container/start_xrdp_container.sh
-  컨테이너 내부에서 user 생성, xrdp 실행, readiness file 생성
+  컨테이너 내부 root 비밀번호 설정, Xvnc 기반 xrdp 실행, 9922 sshd 실행, readiness file 생성
 
 slurm/uabi_cst_xrdp.sbatch
   Slurm job template
@@ -158,9 +172,10 @@ docs/HANDOFF_FOR_NEXT_AGENT.md
 - CST dependency 후보 패키지 설치
 - xrdp manual foreground startup
 - Slurm job에서 enroot container 실행
-- Slurm job에서 SSH reverse tunnel 실행
+- Slurm job에서 RDP 9999와 container SSH 9922 reverse tunnel 실행
 - Windows helper로 프로젝트 전용 OpenSSH 다운로드/설정/시작
 - Windows GUI로 Slurm job 제출/취소, RDP 접속, 상태/자원 사용량 확인
+- Windows GUI로 reverse tunnel key와 VSCode용 container SSH key 자동 관리
 - CST 설치 hook placeholder
 - 동료 연구실 전달 문서
 
@@ -168,8 +183,8 @@ docs/HANDOFF_FOR_NEXT_AGENT.md
 
 - UABI 계산노드의 enroot version별 mount option 호환성
 - Rocky 9.4 image import 가능 여부
-- xrdp backend가 Xorg backend로 안정 동작하는지
-- 필요 시 Xvnc backend로 강제해야 하는지
+- xrdp는 rootless 컨테이너 호환성을 위해 Xvnc backend로 강제한다.
+- Slurm job submit은 기본적으로 enroot backend를 사용한다. 게이트 노드에 enroot가 없어도 계산노드에는 enroot가 있으므로 submit host에서 podman fallback을 자동 선택하지 않는다.
 - CST installer silent mode argument
 - CST license server port 접근성
 - OpenGL renderer가 software rendering인지 GPU rendering인지

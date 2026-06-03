@@ -27,6 +27,7 @@ cat /etc/rocky-release
 grep -q "Rocky Linux release 9.4" /etc/rocky-release
 command -v xrdp
 command -v xrdp-sesman
+command -v sshd
 command -v startxfce4 || true
 command -v glxinfo || true
 '

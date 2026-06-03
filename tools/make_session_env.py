@@ -11,7 +11,9 @@ def main() -> int:
     p.add_argument("--windows-target", required=True)
     p.add_argument("--windows-port", default="10022")
     p.add_argument("--local-rdp-port", default="9999")
-    p.add_argument("--xrdp-user", default="user")
+    p.add_argument("--local-ssh-port", default="9922")
+    p.add_argument("--container-ssh-port", default="9922")
+    p.add_argument("--container-ssh-public-key", default="")
     p.add_argument("--xrdp-password", default="1q2w3e")
     args = p.parse_args()
 
@@ -23,8 +25,12 @@ def main() -> int:
             f'export UABI_REVERSE_SSH_PORT="{args.windows_port}"',
         'export UABI_REVERSE_LOCAL_PORT_ON_WINDOWS="9999"':
             f'export UABI_REVERSE_LOCAL_PORT_ON_WINDOWS="{args.local_rdp_port}"',
-        'export UABI_XRDP_USER="user"':
-            f'export UABI_XRDP_USER="{args.xrdp_user}"',
+        'export UABI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS="9922"':
+            f'export UABI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS="{args.local_ssh_port}"',
+        'export UABI_CONTAINER_SSH_PORT="9922"':
+            f'export UABI_CONTAINER_SSH_PORT="{args.container_ssh_port}"',
+        'export UABI_CONTAINER_SSH_PUBLIC_KEY=""':
+            f'export UABI_CONTAINER_SSH_PUBLIC_KEY="{args.container_ssh_public_key}"',
         'export UABI_XRDP_PASSWORD="1q2w3e"':
             f'export UABI_XRDP_PASSWORD="{args.xrdp_password}"',
     }

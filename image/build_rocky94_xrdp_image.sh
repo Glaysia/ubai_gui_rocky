@@ -46,7 +46,7 @@ dnf config-manager --set-enabled crb || true
 dnf -y install \
   bash coreutils findutils procps-ng which tar gzip bzip2 xz unzip zip \
   hostname iproute iputils net-tools lsof less vim nano sudo shadow-utils \
-  openssh-clients ca-certificates curl wget rsync git python3
+  openssh-clients openssh-server ca-certificates curl wget rsync git python3
 
 dnf -y groupinstall "Xfce" || true
 
@@ -202,6 +202,7 @@ cat /etc/rocky-release
 grep -q "Rocky Linux release 9.4" /etc/rocky-release
 command -v xrdp
 command -v xrdp-sesman
+command -v sshd
 command -v startxfce4 || true
 command -v glxinfo || true
 '
