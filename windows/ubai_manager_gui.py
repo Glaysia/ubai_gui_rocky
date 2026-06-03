@@ -16,16 +16,16 @@ from tkinter import filedialog, messagebox, ttk
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-STATE_ROOT = REPO_ROOT / "secrets" / "uabi-ui"
+STATE_ROOT = REPO_ROOT / "secrets" / "ubai-ui"
 CONFIG_PATH = STATE_ROOT / "config.json"
 STATE_PATH = STATE_ROOT / "state.json"
 GATE_HOST = "172.16.10.36"
 GATE_PORT = "22"
 REMOTE_REPO = "~/ubai_gui"
 REMOTE_ENV = "config/session.env"
-REMOTE_REVERSE_KEY = "$HOME/uabi_gui_secrets/uabi_reverse_to_gate_ed25519"
-LOCAL_REVERSE_KEY = STATE_ROOT / "reverse_keys" / "uabi_reverse_to_gate_ed25519"
-LOCAL_CONTAINER_SSH_KEY = STATE_ROOT / "container_ssh" / "uabi_container_root_ed25519"
+REMOTE_REVERSE_KEY = "$HOME/ubai_gui_secrets/ubai_reverse_to_gate_ed25519"
+LOCAL_REVERSE_KEY = STATE_ROOT / "reverse_keys" / "ubai_reverse_to_gate_ed25519"
+LOCAL_CONTAINER_SSH_KEY = STATE_ROOT / "container_ssh" / "ubai_container_root_ed25519"
 LOCAL_CONTAINER_SSH_PORT = "9922"
 CONTAINER_SSH_PORT = "9922"
 SPINNER_FRAMES = ("\\", "|", "/", "-")
@@ -121,8 +121,8 @@ PARTITION_RESOURCE_BY_NAME = {item["name"]: item for item in PARTITION_RESOURCES
 DEFAULT_PARTITIONS = tuple(item["name"] for item in PARTITION_RESOURCES)
 
 DEFAULTS = {
-    "uabi_user": "harry261",
-    "uabi_key": "secrets/gate-node-ssh/keys/id_ed25519",
+    "ubai_user": "harry261",
+    "ubai_key": "secrets/gate-node-ssh/keys/id_ed25519",
     "local_rdp_port": "9999",
     "xrdp_port": "33989",
     "xrdp_password": "1q2w3e",
@@ -151,10 +151,10 @@ def save_json(path: Path, data: dict[str, str]) -> None:
 
 def load_config() -> dict[str, str]:
     data = load_json(CONFIG_PATH)
-    if "uabi_user" not in data and "gate_user" in data:
-        data["uabi_user"] = data["gate_user"]
-    if "uabi_key" not in data and "gate_key" in data:
-        data["uabi_key"] = data["gate_key"]
+    if "ubai_user" not in data and "gate_user" in data:
+        data["ubai_user"] = data["gate_user"]
+    if "ubai_key" not in data and "gate_key" in data:
+        data["ubai_key"] = data["gate_key"]
     return data
 
 
@@ -179,7 +179,7 @@ def env_export(name: str, value: str, *, allow_home: bool = False) -> str:
 
 
 def ssh_target(values: dict[str, str]) -> str:
-    return f'{values["uabi_user"]}@{GATE_HOST}'
+    return f'{values["ubai_user"]}@{GATE_HOST}'
 
 
 def local_port_open(port: int) -> bool:
@@ -192,7 +192,6 @@ def find_ssh_keygen() -> str:
     for candidate in (
         shutil.which("ssh-keygen.exe"),
         shutil.which("ssh-keygen"),
-        str(REPO_ROOT / "secrets" / "windows-sshd" / "openssh" / "OpenSSH-Win64" / "ssh-keygen.exe"),
     ):
         if candidate and Path(candidate).exists():
             return candidate
@@ -237,10 +236,10 @@ def append_managed_block(path: Path, begin: str, end: str, block: str) -> None:
     path.write_text("\n".join(managed_lines).rstrip() + "\n", encoding="utf-8")
 
 
-class UabiManager(tk.Tk):
+class UbaiManager(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("UABI 계산노드 컨테이너 관리자")
+        self.title("UBAI 계산노드 컨테이너 관리자")
         self.geometry("980x720")
         self.minsize(860, 620)
 
@@ -270,15 +269,15 @@ class UabiManager(tk.Tk):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(3, weight=1)
 
-        gate = ttk.LabelFrame(self, text="UABI 접속")
+        gate = ttk.LabelFrame(self, text="UBAI 접속")
         gate.grid(row=0, column=0, padx=12, pady=(12, 6), sticky="ew")
         for col in range(6):
             gate.columnconfigure(col, weight=1)
 
         ttk.Label(gate, text="고정 게이트").grid(row=0, column=0, padx=6, pady=6, sticky="w")
         ttk.Label(gate, text=f"{GATE_HOST}:{GATE_PORT}").grid(row=0, column=1, padx=6, pady=6, sticky="w")
-        self._entry(gate, "UABI user", "uabi_user", 0, 2, width=16)
-        self._entry(gate, "UABI SSH key", "uabi_key", 1, 0, colspan=5)
+        self._entry(gate, "UBAI user", "ubai_user", 0, 2, width=16)
+        self._entry(gate, "UBAI SSH key", "ubai_key", 1, 0, colspan=5)
         ttk.Button(gate, text="찾기", command=self._choose_key).grid(row=1, column=5, padx=6, pady=6, sticky="ew")
 
         res = ttk.LabelFrame(self, text="할당 자원 / root 접속 비밀번호")
@@ -420,9 +419,9 @@ class UabiManager(tk.Tk):
         path = filedialog.askopenfilename(initialdir=str(REPO_ROOT / "secrets"))
         if path:
             try:
-                self.vars["uabi_key"].set(str(Path(path).resolve().relative_to(REPO_ROOT)))
+                self.vars["ubai_key"].set(str(Path(path).resolve().relative_to(REPO_ROOT)))
             except ValueError:
-                self.vars["uabi_key"].set(path)
+                self.vars["ubai_key"].set(path)
 
     def values(self) -> dict[str, str]:
         return {key: var.get().strip() for key, var in self.vars.items()}
@@ -556,7 +555,7 @@ fi
         worker.start()
 
     def ssh_base(self, values: dict[str, str]) -> list[str]:
-        key = repo_relative(values["uabi_key"])
+        key = repo_relative(values["ubai_key"])
         return [
             "ssh.exe",
             "-i",
@@ -572,7 +571,7 @@ fi
         ]
 
     def scp_base(self, values: dict[str, str]) -> list[str]:
-        key = repo_relative(values["uabi_key"])
+        key = repo_relative(values["ubai_key"])
         return [
             "scp.exe",
             "-i",
@@ -648,16 +647,19 @@ mkdir -p config logs
 if [ ! -f config/session.env ]; then
   cp config/example.env config/session.env
 fi
-sed -i 's|docker://rockylinux:9.4|docker://rockylinux/rockylinux:9.4|g' config/session.env
-if grep -q '^export UABI_CONTAINER_BACKEND=' config/session.env; then
-  sed -i 's|^export UABI_CONTAINER_BACKEND=.*|export UABI_CONTAINER_BACKEND="enroot"|' config/session.env
-else
-  printf '\\nexport UABI_CONTAINER_BACKEND="enroot"\\n' >> config/session.env
+if ! grep -q '^export UBAI_IMAGE=' config/session.env; then
+  cp config/example.env config/session.env
 fi
-if grep -q '^export UABI_IMAGE_BACKEND=' config/session.env; then
-  sed -i 's|^export UABI_IMAGE_BACKEND=.*|export UABI_IMAGE_BACKEND="enroot"|' config/session.env
+sed -i 's|docker://rockylinux:9.4|docker://rockylinux/rockylinux:9.4|g' config/session.env
+if grep -q '^export UBAI_CONTAINER_BACKEND=' config/session.env; then
+  sed -i 's|^export UBAI_CONTAINER_BACKEND=.*|export UBAI_CONTAINER_BACKEND="enroot"|' config/session.env
 else
-  printf 'export UABI_IMAGE_BACKEND="enroot"\\n' >> config/session.env
+  printf '\\nexport UBAI_CONTAINER_BACKEND="enroot"\\n' >> config/session.env
+fi
+if grep -q '^export UBAI_IMAGE_BACKEND=' config/session.env; then
+  sed -i 's|^export UBAI_IMAGE_BACKEND=.*|export UBAI_IMAGE_BACKEND="enroot"|' config/session.env
+else
+  printf 'export UBAI_IMAGE_BACKEND="enroot"\\n' >> config/session.env
 fi
 chmod +x scripts/*.sh image/*.sh container/*.sh tools/*.py 2>/dev/null || true
 echo "[OK] remote project ready: $HOME/ubai_gui"
@@ -687,7 +689,7 @@ echo "[OK] remote project ready: $HOME/ubai_gui"
                     "-N",
                     "",
                     "-C",
-                    f"uabi-ui-reverse {values['uabi_user']}@{GATE_HOST}",
+                    f"ubai-ui-reverse {values['ubai_user']}@{GATE_HOST}",
                     "-f",
                     str(LOCAL_REVERSE_KEY),
                 ],
@@ -700,8 +702,8 @@ echo "[OK] remote project ready: $HOME/ubai_gui"
 
         setup = """
 set -euo pipefail
-mkdir -p "$HOME/.ssh" "$HOME/uabi_gui_secrets"
-chmod 700 "$HOME/.ssh" "$HOME/uabi_gui_secrets"
+mkdir -p "$HOME/.ssh" "$HOME/ubai_gui_secrets"
+chmod 700 "$HOME/.ssh" "$HOME/ubai_gui_secrets"
 touch "$HOME/.ssh/authorized_keys"
 chmod 600 "$HOME/.ssh/authorized_keys"
 """
@@ -709,7 +711,7 @@ chmod 600 "$HOME/.ssh/authorized_keys"
         if result.returncode != 0:
             raise RuntimeError((result.stderr or result.stdout or "reverse key remote setup failed").strip())
 
-        target_dir = f"{ssh_target(values)}:~/uabi_gui_secrets/"
+        target_dir = f"{ssh_target(values)}:~/ubai_gui_secrets/"
         upload = subprocess.run(
             self.scp_base(values) + [str(LOCAL_REVERSE_KEY), str(public_key), target_dir],
             cwd=REPO_ROOT,
@@ -725,8 +727,8 @@ chmod 600 "$HOME/.ssh/authorized_keys"
 
         install = """
 set -euo pipefail
-priv="$HOME/uabi_gui_secrets/uabi_reverse_to_gate_ed25519"
-pub="$HOME/uabi_gui_secrets/uabi_reverse_to_gate_ed25519.pub"
+priv="$HOME/ubai_gui_secrets/ubai_reverse_to_gate_ed25519"
+pub="$HOME/ubai_gui_secrets/ubai_reverse_to_gate_ed25519.pub"
 chmod 600 "$priv"
 chmod 644 "$pub"
 pub_line=$(cat "$pub")
@@ -759,7 +761,7 @@ echo "[OK] 내부 reverse tunnel key 준비 완료"
                     "-N",
                     "",
                     "-C",
-                    "uabi-container-root",
+                    "ubai-container-root",
                     "-f",
                     str(LOCAL_CONTAINER_SSH_KEY),
                 ],
@@ -775,11 +777,11 @@ echo "[OK] 내부 reverse tunnel key 준비 완료"
     def write_vscode_ssh_config(self) -> None:
         identity = LOCAL_CONTAINER_SSH_KEY.resolve().as_posix()
         known_hosts = "NUL" if os.name == "nt" else "/dev/null"
-        begin = "# >>> UABI managed container SSH"
-        end = "# <<< UABI managed container SSH"
+        begin = "# >>> UBAI managed container SSH"
+        end = "# <<< UBAI managed container SSH"
         block = f"""
 {begin}
-Host uabi-container
+Host ubai-container
   HostName 127.0.0.1
   Port {LOCAL_CONTAINER_SSH_PORT}
   User root
@@ -793,7 +795,7 @@ Host localhost
 {end}
 """
         append_managed_block(Path.home() / ".ssh" / "config", begin, end, block)
-        self.post_log("[OK] VSCode SSH alias 준비: ssh://root@uabi-container")
+        self.post_log("[OK] VSCode SSH alias 준비: ssh://root@ubai-container")
         self.post_log(f"[INFO] localhost:{LOCAL_CONTAINER_SSH_PORT}에도 내부 key가 자동 적용됩니다.")
 
     def start_local_forward(self, values: dict[str, str]) -> None:
@@ -866,23 +868,23 @@ Host localhost
             return "꺼짐"
 
         env_lines = [
-            env_export("UABI_SLURM_PARTITION", values["partition"]),
-            env_export("UABI_SLURM_TIME", values["time"]),
-            env_export("UABI_SLURM_CPUS_PER_TASK", values["cpus"]),
-            env_export("UABI_SLURM_MEM", values["mem"]),
-            env_export("UABI_SLURM_GPUS", values["gpus"]),
-            env_export("UABI_CONTAINER_BACKEND", "enroot"),
-            env_export("UABI_IMAGE_BACKEND", "enroot"),
-            env_export("UABI_XRDP_PASSWORD", values["xrdp_password"]),
-            env_export("UABI_XRDP_PORT_IN_CONTAINER", values["xrdp_port"]),
-            env_export("UABI_CONTAINER_SSH_PORT", CONTAINER_SSH_PORT),
-            env_export("UABI_CONTAINER_SSH_PUBLIC_KEY", container_ssh_public_key),
-            env_export("UABI_REVERSE_SSH_TARGET", ssh_target(values)),
-            env_export("UABI_REVERSE_SSH_PORT", GATE_PORT),
-            env_export("UABI_REVERSE_LOCAL_PORT_ON_WINDOWS", values["local_rdp_port"]),
-            env_export("UABI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS", LOCAL_CONTAINER_SSH_PORT),
-            env_export("UABI_REVERSE_BIND_HOST", "127.0.0.1"),
-            env_export("UABI_SSH_IDENTITY_FILE", REMOTE_REVERSE_KEY, allow_home=True),
+            env_export("UBAI_SLURM_PARTITION", values["partition"]),
+            env_export("UBAI_SLURM_TIME", values["time"]),
+            env_export("UBAI_SLURM_CPUS_PER_TASK", values["cpus"]),
+            env_export("UBAI_SLURM_MEM", values["mem"]),
+            env_export("UBAI_SLURM_GPUS", values["gpus"]),
+            env_export("UBAI_CONTAINER_BACKEND", "enroot"),
+            env_export("UBAI_IMAGE_BACKEND", "enroot"),
+            env_export("UBAI_XRDP_PASSWORD", values["xrdp_password"]),
+            env_export("UBAI_XRDP_PORT_IN_CONTAINER", values["xrdp_port"]),
+            env_export("UBAI_CONTAINER_SSH_PORT", CONTAINER_SSH_PORT),
+            env_export("UBAI_CONTAINER_SSH_PUBLIC_KEY", container_ssh_public_key),
+            env_export("UBAI_REVERSE_SSH_TARGET", ssh_target(values)),
+            env_export("UBAI_REVERSE_SSH_PORT", GATE_PORT),
+            env_export("UBAI_REVERSE_LOCAL_PORT_ON_WINDOWS", values["local_rdp_port"]),
+            env_export("UBAI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS", LOCAL_CONTAINER_SSH_PORT),
+            env_export("UBAI_REVERSE_BIND_HOST", "127.0.0.1"),
+            env_export("UBAI_SSH_IDENTITY_FILE", REMOTE_REVERSE_KEY, allow_home=True),
         ]
         exports = "\n".join(env_lines)
         script = f"""
@@ -895,28 +897,28 @@ if [ ! -f "$base_env" ]; then
   exit 2
 fi
 cp "$base_env" "$ui_env"
-cat >> "$ui_env" <<'UABI_UI_ENV'
+cat >> "$ui_env" <<'UBAI_UI_ENV'
 
-# Appended by windows/uabi_manager_gui.py
+# Appended by windows/ubai_manager_gui.py
 {exports}
-UABI_UI_ENV
+UBAI_UI_ENV
 set +u
 source "$ui_env"
 set -u
-if [ "${{UABI_CONTAINER_BACKEND:-enroot}}" = "enroot" ] && [ ! -f "$UABI_IMAGE" ]; then
-  echo "[INFO] enroot image not found; submitting automatic image build job: $UABI_IMAGE"
-  existing=$(squeue -h -u "$USER" -o "%i %j" | awk '$2 == "uabi-build-image" {{print $1; exit}}')
+if [ "${{UBAI_CONTAINER_BACKEND:-enroot}}" = "enroot" ] && [ ! -f "$UBAI_IMAGE" ]; then
+  echo "[INFO] enroot image not found; submitting automatic image build job: $UBAI_IMAGE"
+  existing=$(squeue -h -u "$USER" -o "%i %j" | awk '$2 == "ubai-build-image" {{print $1; exit}}')
   if [ -n "$existing" ]; then
     echo "[INFO] Existing image build job found: $existing"
-    echo "UABI_UI_BUILD_JOB_ID=$existing"
-    echo "UABI_UI_IMAGE_PATH=$UABI_IMAGE"
+    echo "UBAI_UI_BUILD_JOB_ID=$existing"
+    echo "UBAI_UI_IMAGE_PATH=$UBAI_IMAGE"
     exit 0
   fi
-  build_time="${{UABI_IMAGE_BUILD_TIME:-${{UABI_SLURM_TIME:-04:00:00}}}}"
-  build_cpus="${{UABI_IMAGE_BUILD_CPUS:-${{UABI_SLURM_CPUS_PER_TASK:-4}}}}"
-  build_mem="${{UABI_IMAGE_BUILD_MEM:-${{UABI_SLURM_MEM:-16G}}}}"
+  build_time="${{UBAI_IMAGE_BUILD_TIME:-${{UBAI_SLURM_TIME:-04:00:00}}}}"
+  build_cpus="${{UBAI_IMAGE_BUILD_CPUS:-${{UBAI_SLURM_CPUS_PER_TASK:-4}}}}"
+  build_mem="${{UBAI_IMAGE_BUILD_MEM:-${{UBAI_SLURM_MEM:-16G}}}}"
   build_args=()
-  [ -n "${{UABI_SLURM_PARTITION:-}}" ] && build_args+=(--partition="$UABI_SLURM_PARTITION")
+  [ -n "${{UBAI_SLURM_PARTITION:-}}" ] && build_args+=(--partition="$UBAI_SLURM_PARTITION")
   [ -n "$build_time" ] && build_args+=(--time="$build_time")
   [ -n "$build_cpus" ] && build_args+=(--cpus-per-task="$build_cpus")
   [ -n "$build_mem" ] && build_args+=(--mem="$build_mem")
@@ -924,21 +926,21 @@ if [ "${{UABI_CONTAINER_BACKEND:-enroot}}" = "enroot" ] && [ ! -f "$UABI_IMAGE" 
   repo_dir=$(pwd)
   wrap=$(printf 'cd %q && ./scripts/build_image.sh %q' "$repo_dir" "$ui_env")
   out=$(sbatch "${{build_args[@]}}" \
-    --job-name=uabi-build-image \
-    --output=logs/uabi-build-image-%j.out \
-    --error=logs/uabi-build-image-%j.err \
+    --job-name=ubai-build-image \
+    --output=logs/ubai-build-image-%j.out \
+    --error=logs/ubai-build-image-%j.err \
     --wrap="$wrap" 2>&1)
   printf '%s\\n' "$out"
   build_job=$(printf '%s\\n' "$out" | awk '/Submitted batch job/ {{print $4; exit}}')
   if [ -z "$build_job" ]; then
     exit 5
   fi
-  echo "UABI_UI_BUILD_JOB_ID=$build_job"
-  echo "UABI_UI_IMAGE_PATH=$UABI_IMAGE"
+  echo "UBAI_UI_BUILD_JOB_ID=$build_job"
+  echo "UBAI_UI_IMAGE_PATH=$UBAI_IMAGE"
   exit 0
 fi
-echo "UABI_UI_IMAGE_READY=1"
-echo "UABI_UI_IMAGE_PATH=$UABI_IMAGE"
+echo "UBAI_UI_IMAGE_READY=1"
+echo "UBAI_UI_IMAGE_PATH=$UBAI_IMAGE"
 """
         self.post_log("[INFO] 원격 session env 준비 및 이미지 확인 중...")
         result = self.run_remote(values, script, timeout=120)
@@ -947,8 +949,8 @@ echo "UABI_UI_IMAGE_PATH=$UABI_IMAGE"
         if result.returncode != 0:
             raise RuntimeError(f"remote image preparation failed: rc={result.returncode}")
 
-        build_match = re.search(r"UABI_UI_BUILD_JOB_ID=(\d+)", output)
-        image_match = re.search(r"UABI_UI_IMAGE_PATH=(.+)", output)
+        build_match = re.search(r"UBAI_UI_BUILD_JOB_ID=(\d+)", output)
+        image_match = re.search(r"UBAI_UI_IMAGE_PATH=(.+)", output)
         if build_match:
             image_path = image_match.group(1).strip() if image_match else ""
             self._wait_until_image_ready(values, build_match.group(1), image_path)
@@ -963,7 +965,7 @@ out=$(./scripts/submit_xrdp_job.sh "$ui_env" 2>&1)
 printf '%s\\n' "$out"
 job=$(printf '%s\\n' "$out" | awk '/Submitted batch job/ {{print $4; exit}}')
 if [ -n "$job" ]; then
-  echo "UABI_UI_JOB_ID=$job"
+  echo "UBAI_UI_JOB_ID=$job"
 fi
 """
         self.post_log("[INFO] Slurm job 제출 중...")
@@ -972,7 +974,7 @@ fi
         self.post_log(output.rstrip() or f"[INFO] ssh rc={result.returncode}")
         if result.returncode != 0:
             raise RuntimeError(f"remote submit failed: rc={result.returncode}")
-        match = re.search(r"UABI_UI_JOB_ID=(\d+)", output)
+        match = re.search(r"UBAI_UI_JOB_ID=(\d+)", output)
         if match:
             job_id = match.group(1)
             self.save_state(job_id=job_id)
@@ -1006,17 +1008,17 @@ fi
 if squeue -h -j "$job" | grep -q .; then
   echo "[INFO] image build job is still running: $job"
   echo "--- build stdout tail"
-  tail -n 8 "logs/uabi-build-image-${{job}}.out" 2>/dev/null || true
+  tail -n 8 "logs/ubai-build-image-${{job}}.out" 2>/dev/null || true
   echo "--- build stderr tail"
-  tail -n 8 "logs/uabi-build-image-${{job}}.err" 2>/dev/null || true
+  tail -n 8 "logs/ubai-build-image-${{job}}.err" 2>/dev/null || true
   exit 10
 fi
 echo "[ERROR] image build job ended but image is missing: $image"
 sacct -j "$job" --format=JobID,JobName,State,ExitCode,Elapsed,NodeList,Reason 2>/dev/null || true
 echo "--- build stdout"
-tail -n 120 "logs/uabi-build-image-${{job}}.out" 2>/dev/null || true
+tail -n 120 "logs/ubai-build-image-${{job}}.out" 2>/dev/null || true
 echo "--- build stderr"
-tail -n 120 "logs/uabi-build-image-${{job}}.err" 2>/dev/null || true
+tail -n 120 "logs/ubai-build-image-${{job}}.err" 2>/dev/null || true
 exit 2
 """
             result = self.run_remote(values, script, timeout=60)
@@ -1037,27 +1039,27 @@ set -euo pipefail
 cd {remote_cd_expr(REMOTE_REPO)}
 job={shlex.quote(job_id)}
 for i in $(seq 1 90); do
-  if grep -q "Reverse tunnel established" "logs/uabi-cst-xrdp-${{job}}.out" 2>/dev/null; then
+  if grep -q "Reverse tunnel established" "logs/ubai-cst-xrdp-${{job}}.out" 2>/dev/null; then
     echo "[OK] Reverse tunnel established for job $job"
     exit 0
   fi
-  if grep -q "\\[ERROR\\]" "logs/uabi-cst-xrdp-${{job}}.out" 2>/dev/null; then
-    tail -n 80 "logs/uabi-cst-xrdp-${{job}}.out"
+  if grep -q "\\[ERROR\\]" "logs/ubai-cst-xrdp-${{job}}.out" 2>/dev/null; then
+    tail -n 80 "logs/ubai-cst-xrdp-${{job}}.out"
     exit 2
   fi
   if ! squeue -h -j "$job" | grep -q .; then
     echo "[ERROR] Slurm job is no longer running: $job"
     sacct -j "$job" --format=JobID,JobName,State,ExitCode,Elapsed,NodeList,Reason 2>/dev/null || true
     echo "--- Job stdout"
-    tail -n 120 "logs/uabi-cst-xrdp-${{job}}.out" 2>/dev/null || true
+    tail -n 120 "logs/ubai-cst-xrdp-${{job}}.out" 2>/dev/null || true
     echo "--- Job stderr"
-    tail -n 120 "logs/uabi-cst-xrdp-${{job}}.err" 2>/dev/null || true
+    tail -n 120 "logs/ubai-cst-xrdp-${{job}}.err" 2>/dev/null || true
     exit 2
   fi
   sleep 5
 done
 squeue -j "$job" || true
-tail -n 80 "logs/uabi-cst-xrdp-${{job}}.out" 2>/dev/null || true
+tail -n 80 "logs/ubai-cst-xrdp-${{job}}.out" 2>/dev/null || true
 exit 3
 """
         self.post_log("[INFO] XRDP/reverse tunnel 준비 대기 중...")
@@ -1089,7 +1091,7 @@ ids=""
 if [ -n "$preferred" ]; then
   ids="$preferred"
 fi
-extra=$(squeue -h -u "$USER" -o "%i %j" | awk '$2 ~ /^uabi-(cst|build-image)/ {{print $1}}')
+extra=$(squeue -h -u "$USER" -o "%i %j" | awk '$2 ~ /^ubai-(cst|build-image)/ {{print $1}}')
 for id in $extra; do
   case " $ids " in
     *" $id "*) ;;
@@ -1098,7 +1100,7 @@ for id in $extra; do
 done
 ids=$(printf '%s\\n' "$ids" | xargs 2>/dev/null || true)
 if [ -z "$ids" ]; then
-  echo "[INFO] 실행 중인 UABI XRDP/build job이 없습니다."
+  echo "[INFO] 실행 중인 UBAI XRDP/build job이 없습니다."
 else
   echo "[INFO] scancel $ids"
   scancel $ids 2>/dev/null || true
@@ -1117,13 +1119,13 @@ set +e
 rdp_port={shlex.quote(values["local_rdp_port"])}
 ssh_port={shlex.quote(LOCAL_CONTAINER_SSH_PORT)}
 for i in $(seq 1 30); do
-  jobs=$(squeue -h -u "$USER" -o "%i %j" | awk '$2 ~ /^uabi-cst/ {{print $1}}')
+  jobs=$(squeue -h -u "$USER" -o "%i %j" | awk '$2 ~ /^ubai-cst/ {{print $1}}')
   nc -z 127.0.0.1 "$rdp_port" >/dev/null 2>&1
   rdp_open=$?
   nc -z 127.0.0.1 "$ssh_port" >/dev/null 2>&1
   ssh_open=$?
   if [ -z "$jobs" ] && [ "$rdp_open" -ne 0 ] && [ "$ssh_open" -ne 0 ]; then
-    echo "[OK] 기존 UABI XRDP job/relay 정리 완료"
+    echo "[OK] 기존 UBAI XRDP job/relay 정리 완료"
     exit 0
   fi
   echo "[INFO] 기존 job/relay 정리 대기 중: jobs=${{jobs:-none}}, gate_rdp_open=$([ "$rdp_open" -eq 0 ] && echo yes || echo no), gate_ssh_open=$([ "$ssh_open" -eq 0 ] && echo yes || echo no)"
@@ -1192,7 +1194,7 @@ job={shlex.quote(job_id)}
 echo "--- Slurm jobs"
 squeue -u "$USER" -o "%.18i|%.9P|%.32j|%.2t|%.10M|%.6D|%.8C|%.12m|%R"
 if [ -z "$job" ] || ! squeue -h -j "$job" >/dev/null 2>&1; then
-  job=$(squeue -h -u "$USER" -o "%i %j" | awk '$2 ~ /^uabi-cst/ {{print $1; exit}}')
+  job=$(squeue -h -u "$USER" -o "%i %j" | awk '$2 ~ /^ubai-cst/ {{print $1; exit}}')
 fi
 echo "--- Selected job"
 echo "${{job:-none}}"
@@ -1202,7 +1204,7 @@ if [ -n "$job" ]; then
   echo "--- sstat"
   sstat -j "$job.batch" --format=JobID,AveCPU,AveRSS,MaxRSS -P 2>/dev/null || true
   echo "--- Job log"
-  tail -n 80 "logs/uabi-cst-xrdp-${{job}}.out" 2>/dev/null || true
+  tail -n 80 "logs/ubai-cst-xrdp-${{job}}.out" 2>/dev/null || true
 fi
 echo "--- Gate relay port"
 (nc -vz 127.0.0.1 {shlex.quote(values["local_rdp_port"])} || true) 2>&1
@@ -1225,7 +1227,7 @@ echo "--- Gate container SSH port"
 
 
 def main() -> int:
-    app = UabiManager()
+    app = UbaiManager()
     app.mainloop()
     return 0
 

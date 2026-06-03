@@ -1,118 +1,77 @@
-# Handoff for next agent
+# Handoff For Next Agent
 
 This project is a skeleton, not a fully field-validated release.
 
-## User intent
+## User Intent
 
-The user wants to provide a reproducible solution for colleagues who need to run CST Studio Suite on a university supercomputing/HPC environment called UABI. Pain points:
+The user wants a reproducible tool for colleagues who need to run CST Studio Suite on the UBAI HPC environment. The current target is one allocated high-performance node with GUI access, not a multi-node automated simulation farm.
+
+Pain points:
 
 - Installing arbitrary software on Rocky Linux HPC is hard.
 - GUI access from compute nodes is not available by default.
 - Compute node inbound TCP is blocked.
-- User quota/storage may be limited, but sshfs is intentionally excluded from this skeleton.
-- RustDesk is considered too hard for non-expert users due to modern security prompts and remote-control semantics.
+- The UBAI gate node can accept normal SSH.
+- The Windows PC should not run any SSH server.
+- RustDesk is too hard to distribute cleanly to non-expert users.
 
-Proposed solution:
+## Current Solution
 
-- `enroot` on compute node
-- `docker://rockylinux/rockylinux:9.4`
-- desktop environment plus OpenGL/X11 and CST dependencies
-- xrdp server inside container
-- sshd on `127.0.0.1:9922` inside container for VSCode Remote-SSH
-- SSH reverse tunnel from compute node to Windows PC
-- Windows helper script for project-local OpenSSH sshd
-- Windows Remote Desktop Client connects to localhost forwarded port
-- VSCode Remote-SSH connects to localhost forwarded port
+- Build a Rocky Linux 9.4 enroot image.
+- Start XFCE, xrdp, and a container-local sshd inside the Slurm job.
+- Open compute node -> gate node SSH reverse tunnels for RDP and container SSH.
+- Open Windows PC -> gate node SSH local forwards for the same ports.
+- Connect with `mstsc.exe` and VSCode Remote-SSH.
 
-## Important design decisions
+## Important Decisions
 
-### xrdp, not RustDesk
+### No Windows SSH Server
 
-RustDesk was previously used in a separate tarball. It worked conceptually, but it is not ideal for colleagues. xrdp has a simpler mental model for Windows users.
-
-### No sshfs in this skeleton
-
-There is sshfs logic in `Glaysia/peetsfea-runner` around commit `4642e657213a857f907e2d80a9a66ba17c490d4d`. That is a separate AEDT/FEA persistent worker model. This skeleton intentionally leaves sshfs out because CST GUI/xrdp PoC does not require it.
-
-### Windows SSHD is required for default mode
-
-The reverse tunnel default mode assumes:
+The Windows PC is only an SSH client. Do not reintroduce a Windows-side SSH server or inbound firewall dependency. The relay path is:
 
 ```text
-compute node -> Windows PC project-local sshd
+compute node -> gate node <- Windows PC
 ```
 
-If Windows PC is behind NAT and not reachable, this will fail. Add a relay mode later.
+### xrdp, Not RustDesk
 
-## Next implementation tasks
+xrdp has a simpler mental model for Windows users and works with the built-in Remote Desktop Client.
 
-1. Test `enroot import docker://rockylinux/rockylinux:9.4` on UABI login/compute node.
-2. Validate package names on Rocky 9.4:
-   - `xrdp`
-   - `xorgxrdp`
-   - `tigervnc-server`
-   - `Xfce` group
-   - `openmotif` or `motif`
-3. xrdp is forced to the Xvnc backend because Xorg backend failed under the rootless container runtime.
-4. Container sshd uses root plus GUI-managed public key. Do not enable unauthenticated root SSH.
-5. `scripts/submit_xrdp_job.sh` defaults to enroot without checking the submit host. UABI gate has podman but no enroot; compute nodes have enroot but no podman.
-6. Add explicit xrdp/sshd diagnostics.
-7. Validate Windows helper on Windows 11.
-8. Add relay-server mode.
-9. CST integration:
-   - collect actual CST Linux installer filename
-   - identify silent install mode
-   - add license server env var mapping
-   - add launcher wrapper
-10. OpenGL path:
-   - identify whether UABI has GPU compute nodes
-   - test `glxinfo`
-   - optionally add VirtualGL/TurboVNC variant
-11. Security:
-   - restrict firewall remote address
-   - never log xrdp password
-   - support SSH key only mode
+### No sshfs In This Skeleton
 
-## Known risks
+There is sshfs logic in `Glaysia/peetsfea-runner`, but this project intentionally leaves it out. CST GUI/xrdp proof of concept does not require it.
 
-- xrdp inside enroot may require adjustments because enroot is not a full systemd VM.
-- sshd inside enroot may require host key/runtime directory fixes in site images.
-- xrdp package defaults may expect runtime directories not present in a container.
-- SELinux is likely irrelevant inside enroot but PAM configs can still bite.
-- CST GUI may run slowly under software OpenGL.
-- Windows PC may not be reachable from compute node due to NAT.
-- CST official support may reject Rocky Linux as non-RHEL even though it is RHEL-compatible.
+### Backend Assumption
 
-## Testing checklist
+The UBAI gate node may have podman but no enroot. Compute nodes may have enroot but no podman. The GUI therefore defaults XRDP jobs to enroot and should not warn about podman fallback during normal operation.
 
-On UABI:
+## Next Tasks
 
-```bash
-cp config/example.env config/session.env
-nano config/session.env
-./scripts/build_image.sh config/session.env
-./scripts/submit_xrdp_job.sh config/session.env
-```
+1. Validate xrdp login and desktop startup on each target partition.
+2. Keep explicit diagnostics for xrdp, container sshd, compute reachability, and gate relay reachability.
+3. Add CST silent install support once the actual installer and license details are known.
+4. Test OpenGL renderer and decide whether VirtualGL/TurboVNC is worth adding.
+5. Avoid logging passwords or committing secrets.
+
+## Testing Checklist
 
 On Windows:
 
 ```powershell
-python windows\uabi_reverse_helper.py --port 10022 --local-rdp-port 9999
+python windows\ubai_manager_gui.py
 netstat -ano | findstr 9999
 netstat -ano | findstr 9922
-mstsc.exe
-ssh root@uabi-container
+mstsc.exe /v:127.0.0.1:9999
+ssh root@ubai-container
 ```
 
-If `mstsc` reaches login screen but desktop is black:
-- xrdp auth works
-- session backend is broken
-- inspect `/var/log/xrdp-sesman.log`
-- keep the forced Xvnc backend and root `.Xclients` path working
+On UBAI:
 
-If tunnel fails:
-- check Windows sshd reachable from UABI
-- check firewall
-- try `ssh -vvv WINDOWS_USER@WINDOWS_HOST -p 10022`
-- verify Windows account password/key auth
-- check both reverse ports, 9999 for RDP and 9922 for container SSH
+```bash
+squeue -u "$USER"
+tail -n 120 ~/ubai_gui/logs/ubai-cst-xrdp-<jobid>.out
+nc -vz 127.0.0.1 9999
+nc -vz 127.0.0.1 9922
+```
+
+If `mstsc` reaches login but the desktop fails, inspect `/var/log/xrdp-sesman.log`, `/work/logs/xrdp-sesman.stderr`, and the forced Xvnc configuration first.

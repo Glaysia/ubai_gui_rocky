@@ -8,8 +8,8 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--template", default="config/example.env")
     p.add_argument("--output", default="config/session.env")
-    p.add_argument("--windows-target", required=True)
-    p.add_argument("--windows-port", default="10022")
+    p.add_argument("--gate-target", required=True, help="SSH target for the UBAI gate node, for example user@172.16.10.36")
+    p.add_argument("--gate-port", default="22")
     p.add_argument("--local-rdp-port", default="9999")
     p.add_argument("--local-ssh-port", default="9922")
     p.add_argument("--container-ssh-port", default="9922")
@@ -19,20 +19,20 @@ def main() -> int:
 
     template = Path(args.template).read_text(encoding="utf-8")
     replacements = {
-        'export UABI_REVERSE_SSH_TARGET="WINDOWS_USER@WINDOWS_HOST_OR_IP"':
-            f'export UABI_REVERSE_SSH_TARGET="{args.windows_target}"',
-        'export UABI_REVERSE_SSH_PORT="10022"':
-            f'export UABI_REVERSE_SSH_PORT="{args.windows_port}"',
-        'export UABI_REVERSE_LOCAL_PORT_ON_WINDOWS="9999"':
-            f'export UABI_REVERSE_LOCAL_PORT_ON_WINDOWS="{args.local_rdp_port}"',
-        'export UABI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS="9922"':
-            f'export UABI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS="{args.local_ssh_port}"',
-        'export UABI_CONTAINER_SSH_PORT="9922"':
-            f'export UABI_CONTAINER_SSH_PORT="{args.container_ssh_port}"',
-        'export UABI_CONTAINER_SSH_PUBLIC_KEY=""':
-            f'export UABI_CONTAINER_SSH_PUBLIC_KEY="{args.container_ssh_public_key}"',
-        'export UABI_XRDP_PASSWORD="1q2w3e"':
-            f'export UABI_XRDP_PASSWORD="{args.xrdp_password}"',
+        'export UBAI_REVERSE_SSH_TARGET="UBAI_USER@172.16.10.36"':
+            f'export UBAI_REVERSE_SSH_TARGET="{args.gate_target}"',
+        'export UBAI_REVERSE_SSH_PORT="22"':
+            f'export UBAI_REVERSE_SSH_PORT="{args.gate_port}"',
+        'export UBAI_REVERSE_LOCAL_PORT_ON_WINDOWS="9999"':
+            f'export UBAI_REVERSE_LOCAL_PORT_ON_WINDOWS="{args.local_rdp_port}"',
+        'export UBAI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS="9922"':
+            f'export UBAI_REVERSE_LOCAL_SSH_PORT_ON_WINDOWS="{args.local_ssh_port}"',
+        'export UBAI_CONTAINER_SSH_PORT="9922"':
+            f'export UBAI_CONTAINER_SSH_PORT="{args.container_ssh_port}"',
+        'export UBAI_CONTAINER_SSH_PUBLIC_KEY=""':
+            f'export UBAI_CONTAINER_SSH_PUBLIC_KEY="{args.container_ssh_public_key}"',
+        'export UBAI_XRDP_PASSWORD="1q2w3e"':
+            f'export UBAI_XRDP_PASSWORD="{args.xrdp_password}"',
     }
     out = template
     for k, v in replacements.items():

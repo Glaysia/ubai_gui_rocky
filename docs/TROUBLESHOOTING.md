@@ -1,43 +1,51 @@
 # Troubleshooting
 
-## The Slurm job starts but Windows cannot connect to 127.0.0.1:9999
+## Windows Cannot Connect To 127.0.0.1:9999
 
-Check on Windows:
+Check the Windows local forward:
 
 ```powershell
 netstat -ano | findstr 9999
 netstat -ano | findstr 9922
 ```
 
-If nothing is listening, the SSH reverse tunnel did not establish.
+If nothing is listening, the PC -> gate local forward is not open.
 
-On UABI, inspect Slurm logs and try:
+Check the gate relay from the Windows GUI status output, or manually on the gate:
 
 ```bash
-ssh -vvv -p "$UABI_REVERSE_SSH_PORT" "$UABI_REVERSE_SSH_TARGET"
+nc -vz 127.0.0.1 9999
+nc -vz 127.0.0.1 9922
 ```
 
-## SSH from UABI to Windows fails
+If the gate ports are closed, inspect the Slurm log:
+
+```bash
+tail -n 120 logs/ubai-cst-xrdp-<jobid>.out
+tail -n 120 logs/ubai-cst-xrdp-<jobid>.err
+```
+
+## Compute To Gate Reverse Tunnel Fails
 
 Common causes:
 
-- Windows PC is behind NAT.
-- Windows firewall rule not created.
-- Project-local Windows OpenSSH sshd is not running.
-- Wrong Windows username.
-- Password login disabled or blocked.
-- Corporate/school security policy blocks inbound SSH.
+- the relay key was not uploaded to `~/ubai_gui_secrets`
+- the relay public key is missing from `~/.ssh/authorized_keys`
+- port 9999 or 9922 is already in use on the gate node
+- the Slurm job exited before opening the tunnel
+- the container xrdp or sshd port did not become reachable from the compute node
 
-Run on Windows:
+From the compute node job log, check whether these lines appear:
 
-```powershell
-python windows\uabi_reverse_helper.py --status
-Get-Process sshd
+```text
+[OK] Compute node can reach container XRDP/SSH ports.
+[OK] Reverse tunnel established.
+[OK] Gate node can reach forwarded RDP/SSH ports.
 ```
 
-## VSCode cannot connect to root@localhost:9922
+## VSCode Cannot Connect To root@localhost:9922
 
-The container starts an internal `sshd` on `127.0.0.1:9922`. The Slurm job reverse-forwards that port to the gate, and the Windows GUI opens the local forward to `127.0.0.1:9922`.
+The container starts an internal `sshd` on `127.0.0.1:9922`. The Slurm job reverse-forwards that port to the gate, and the Windows GUI local-forwards it back to `127.0.0.1:9922` on this PC.
 
 Check Windows:
 
@@ -46,15 +54,15 @@ Test-NetConnection 127.0.0.1 -Port 9922
 ssh -vvv root@localhost -p 9922
 ```
 
-The GUI writes a managed `Host uabi-container` block to `%USERPROFILE%\.ssh\config`. Prefer this VSCode Remote-SSH target:
+Prefer this VSCode Remote-SSH target:
 
 ```text
-ssh://root@uabi-container
+ssh://root@ubai-container
 ```
 
 No unauthenticated root SSH is opened. The GUI creates an internal key, adds it to the container root `authorized_keys`, and configures the local SSH client to use it. If key auth fails, use the same root password as XRDP.
 
-## xrdp login works but desktop is black
+## XRDP Login Works But Desktop Is Black
 
 This usually means xrdp auth worked but session startup failed.
 
@@ -74,9 +82,9 @@ which startxfce4
 cat ~/.Xclients
 ```
 
-xrdp is configured to use the Xvnc backend. If login succeeds but the desktop does not open, inspect the job-local xrdp and sesman logs first.
+The image is configured to use the Xvnc backend. If login succeeds but the desktop does not open, inspect the job-local xrdp and sesman logs first.
 
-## CST GUI opens but 3D view is slow
+## CST GUI Opens But 3D View Is Slow
 
 Check OpenGL:
 
@@ -86,9 +94,9 @@ glxinfo | grep -E "OpenGL vendor|OpenGL renderer|OpenGL version"
 
 If renderer contains `llvmpipe`, the GUI is using CPU software rendering. That may still be usable for setup but slow for heavy 3D interaction.
 
-## CST cannot get license
+## CST Cannot Get License
 
-Check license server reachability from compute node/container:
+Check license server reachability from the compute node/container:
 
 ```bash
 nc -vz LICENSE_HOST 27000

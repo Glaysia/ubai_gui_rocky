@@ -16,24 +16,24 @@ repo_root="$(cd "$script_dir/.." && pwd)"
 source "$abs_env_file"
 
 sbatch_args=()
-[ -n "${UABI_SLURM_PARTITION:-}" ] && sbatch_args+=(--partition="$UABI_SLURM_PARTITION")
-[ -n "${UABI_SLURM_TIME:-}" ] && sbatch_args+=(--time="$UABI_SLURM_TIME")
-[ -n "${UABI_SLURM_CPUS_PER_TASK:-}" ] && sbatch_args+=(--cpus-per-task="$UABI_SLURM_CPUS_PER_TASK")
-[ -n "${UABI_SLURM_MEM:-}" ] && sbatch_args+=(--mem="$UABI_SLURM_MEM")
-[ -n "${UABI_SLURM_GPUS:-}" ] && sbatch_args+=(--gres="gpu:${UABI_SLURM_GPUS}")
+[ -n "${UBAI_SLURM_PARTITION:-}" ] && sbatch_args+=(--partition="$UBAI_SLURM_PARTITION")
+[ -n "${UBAI_SLURM_TIME:-}" ] && sbatch_args+=(--time="$UBAI_SLURM_TIME")
+[ -n "${UBAI_SLURM_CPUS_PER_TASK:-}" ] && sbatch_args+=(--cpus-per-task="$UBAI_SLURM_CPUS_PER_TASK")
+[ -n "${UBAI_SLURM_MEM:-}" ] && sbatch_args+=(--mem="$UBAI_SLURM_MEM")
+[ -n "${UBAI_SLURM_GPUS:-}" ] && sbatch_args+=(--gres="gpu:${UBAI_SLURM_GPUS}")
 
 mkdir -p "$repo_root/logs"
 
-backend="${UABI_CONTAINER_BACKEND:-enroot}"
+backend="${UBAI_CONTAINER_BACKEND:-enroot}"
 case "$backend" in
   enroot)
-    sbatch_file="$repo_root/slurm/uabi_cst_xrdp.sbatch"
+    sbatch_file="$repo_root/slurm/ubai_cst_xrdp.sbatch"
     ;;
   podman)
-    sbatch_file="$repo_root/slurm/uabi_cst_xrdp_podman.sbatch"
+    sbatch_file="$repo_root/slurm/ubai_cst_xrdp_podman.sbatch"
     ;;
   *)
-    echo "[ERROR] Unsupported UABI_CONTAINER_BACKEND: $backend" >&2
+    echo "[ERROR] Unsupported UBAI_CONTAINER_BACKEND: $backend" >&2
     echo "        Use enroot or podman." >&2
     exit 2
     ;;
@@ -42,5 +42,5 @@ esac
 echo "[INFO] Submitting XRDP job with env: $abs_env_file"
 echo "[INFO] Container backend: $backend"
 sbatch "${sbatch_args[@]}" \
-  --export=ALL,UABI_ENV_FILE="$abs_env_file",UABI_REPO_ROOT="$repo_root" \
+  --export=ALL,UBAI_ENV_FILE="$abs_env_file",UBAI_REPO_ROOT="$repo_root" \
   "$sbatch_file"

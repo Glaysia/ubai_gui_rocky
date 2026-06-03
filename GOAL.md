@@ -1,87 +1,73 @@
 # GOAL
 
-이 프로젝트의 목표는 서울시립대학교 UABI 같은 HPC 환경에서, 사용자가 root 권한 없이도 계산노드에서 CST Studio Suite Linux GUI와 solver를 실행할 수 있도록 하는 재현 가능한 skeleton을 제공하는 것이다.
+이 프로젝트의 목표는 UBAI 같은 HPC 환경에서 사용자가 root 권한 없이 계산노드 컨테이너 안에 CST Studio Suite Linux GUI 실행 환경을 만들고, Windows PC에서 RDP와 VSCode SSH로 접속할 수 있게 하는 것이다.
 
-핵심 아이디어는 다음과 같다.
+## 핵심 구조
 
 1. 계산노드에서 `enroot`로 Rocky Linux 9.4 userspace를 실행한다.
-2. Rocky Linux 9.4는 CST Studio Suite의 공식 Linux 지원군인 RHEL 9.x에 대응되는 RHEL-compatible 환경으로 사용한다.
-3. 컨테이너 내부에 desktop environment, OpenGL/X11 runtime, xrdp server, sshd, CST 실행 의존성을 설치한다.
-4. 계산노드 inbound TCP가 막힌 상황을 가정하고, 계산노드에서 사용자 Windows PC로 SSH reverse tunnel을 생성한다.
-5. 사용자는 Windows 기본 Remote Desktop Client, 즉 `mstsc.exe`로 `127.0.0.1:<local-port>`에 접속한다.
-6. 사용자는 VSCode Remote-SSH로 `root@localhost:9922` 또는 `root@uabi-container`에 접속할 수 있다.
-7. CST 설치 파일과 license server 값은 기관별로 다르므로, skeleton에서는 hook과 설정 위치만 제공한다.
+2. 컨테이너 안에 XFCE, OpenGL/X11 runtime, xrdp, container sshd, CST 실행 보조 도구를 준비한다.
+3. 계산노드는 inbound TCP가 막혀 있으므로 계산노드에서 게이트 노드로 SSH reverse tunnel을 연다.
+4. Windows PC는 게이트 노드로 SSH local forward만 연다.
+5. Windows PC에는 SSH server를 열지 않는다. PC는 게이트 노드로 나가는 SSH client 연결만 사용한다.
+6. 사용자는 `mstsc.exe`로 `127.0.0.1:9999`에 접속한다.
+7. 사용자는 VSCode Remote-SSH로 `root@localhost:9922` 또는 `root@ubai-container`에 접속할 수 있다.
+8. CST installer와 license server 값은 기관별로 다르므로 skeleton에서는 hook과 설정 위치만 제공한다.
 
-이 프로젝트는 RustDesk를 사용하지 않는다. RustDesk는 원격지원 도구로서는 편하지만, 보안 경고, direct access, relay, ID server 설정이 초심자에게 어렵다. 동료 연구실 배포 목적에서는 xrdp가 더 설명하기 쉽다.
-
-## Non-goals
+## Non-Goals
 
 현재 skeleton은 다음을 직접 제공하지 않는다.
 
-- CST Studio Suite 설치 파일
+- CST Studio Suite installer 파일
 - CST license server 정보
-- Dassault 공식 지원 보장
 - 기관 보안정책 우회
 - GPU 가속 OpenGL 보장
-- sshfs 기반 외부 저장공간 마운트
-
-sshfs는 의도적으로 제외했다. CST GUI 접속과 실행 가능성 PoC에서는 필수가 아니며, 용량 확장이 필요할 때 별도 layer로 추가한다.
+- 여러 계산노드를 자동으로 할당해 대량 데이터셋을 생성하는 runner
+- sshfs 기반 영구 workspace layer
 
 ## 최종 사용자 경험
 
-### Windows PC
+Windows PC:
 
 ```powershell
-python windows\uabi_reverse_helper.py --port 10022 --local-rdp-port 9999
+python windows\ubai_manager_gui.py
 ```
 
-### UABI login node
+GUI에서 UBAI 사용자명, UBAI SSH key, root 비밀번호, 할당 자원을 넣고 `컨테이너 켜기`를 누른다.
 
-```bash
-cp config/example.env config/session.env
-nano config/session.env
-./scripts/build_image.sh config/session.env
-./scripts/submit_xrdp_job.sh config/session.env
-```
-
-### Windows PC
+접속:
 
 ```text
-mstsc.exe
-Computer: 127.0.0.1:9999
-Username: root
-Password: 1q2w3e
+RDP:    mstsc.exe -> 127.0.0.1:9999
+User:   root
+Pass:   GUI에서 지정한 root 비밀번호
 
-VSCode Remote-SSH
-Target: ssh://root@uabi-container
-Port: 127.0.0.1:9922
+VSCode: ssh://root@ubai-container
+또는:   ssh://root@localhost:9922
 ```
 
 ## 성공 판정
 
 1. Slurm job이 계산노드에서 살아 있다.
-2. Windows PC에서 `netstat -ano | findstr 9999`와 `netstat -ano | findstr 9922`로 reverse tunnel listen이 보인다.
-3. Windows Remote Desktop에서 `127.0.0.1:9999` 접속이 된다.
-4. VSCode Remote-SSH에서 `root@uabi-container` 또는 `root@localhost:9922` 접속이 된다.
-5. XFCE desktop이 뜬다.
-6. 컨테이너 터미널에서 다음이 된다.
+2. 게이트 노드 loopback에 RDP/SSH reverse relay port가 열린다.
+3. Windows PC loopback에 RDP/SSH local forward port가 열린다.
+4. Windows Remote Desktop에서 `127.0.0.1:9999` 접속이 된다.
+5. VSCode Remote-SSH에서 `root@ubai-container` 또는 `root@localhost:9922` 접속이 된다.
+6. XFCE desktop이 열린다.
+7. 컨테이너 터미널에서 다음이 동작한다.
 
 ```bash
 cat /etc/rocky-release
-echo $DISPLAY
+echo "$DISPLAY"
 glxinfo | grep -E "OpenGL vendor|OpenGL renderer|OpenGL version"
+firefox --version
 ```
-
-7. CST 설치 후 `cst_design_environment` 또는 기관 CST launcher가 실행된다.
 
 ## 장기 목표
 
-다른 agent가 이어받을 때의 장기 목표는 다음이다.
+이 아래는 지금 당장 구현할 필요가 없다.
 
-1. CST 설치 파일의 silent install 자동화
+1. CST silent install 자동화
 2. license server variable 자동 주입
 3. TurboVNC/VirtualGL backend 선택지 추가
-4. sshfs workspace layer 선택 추가
-5. Windows PC helper의 GUI화
-6. Slurm array/persistent worker mode 추가
-7. CST batch solve wrapper 추가
+4. Slurm array/persistent worker mode 추가
+5. CST batch solve wrapper 추가

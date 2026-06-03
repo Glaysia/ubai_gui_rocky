@@ -49,8 +49,8 @@ RUN printf '%s\n' \
       'echo "DISPLAY=${DISPLAY:-}"' \
       'echo "Try: glxinfo | grep -E '"'"'OpenGL vendor|OpenGL renderer|OpenGL version'"'"'"' \
       'exec "${SHELL:-/bin/bash}"' \
-      > /usr/local/bin/uabi-cst-shell && \
-    chmod +x /usr/local/bin/uabi-cst-shell
+      > /usr/local/bin/ubai-cst-shell && \
+    chmod +x /usr/local/bin/ubai-cst-shell
 
 RUN printf '%s\n' \
       '#!/usr/bin/env bash' \
@@ -59,10 +59,10 @@ RUN printf '%s\n' \
       'for path in "${CANDIDATES[@]}"; do' \
       '  if [ -x "$path" ]; then exec "$path" "$@"; fi' \
       'done' \
-      'echo "[ERROR] CST launcher not found. Edit /usr/local/bin/uabi-start-cst." >&2' \
+      'echo "[ERROR] CST launcher not found. Edit /usr/local/bin/ubai-start-cst." >&2' \
       'exit 127' \
-      > /usr/local/bin/uabi-start-cst && \
-    chmod +x /usr/local/bin/uabi-start-cst
+      > /usr/local/bin/ubai-start-cst && \
+    chmod +x /usr/local/bin/ubai-start-cst
 
 COPY image/install_cst_placeholder.sh /tmp/install_cst_placeholder.sh
 RUN /bin/bash /tmp/install_cst_placeholder.sh || true

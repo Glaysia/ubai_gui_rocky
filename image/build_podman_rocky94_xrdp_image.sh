@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${UABI_PODMAN_IMAGE:=localhost/uabi-cst-rocky94-xrdp:latest}"
-: "${UABI_PODMAN_IMAGE_ARCHIVE:=$HOME/runtime/podman/uabi-cst-rocky94-xrdp.tar}"
+: "${UBAI_PODMAN_IMAGE:=localhost/ubai-cst-rocky94-xrdp:latest}"
+: "${UBAI_PODMAN_IMAGE_ARCHIVE:=$HOME/runtime/podman/ubai-cst-rocky94-xrdp.tar}"
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
@@ -14,14 +14,14 @@ if ! command -v podman >/dev/null 2>&1; then
   exit 127
 fi
 
-echo "[INFO] Building podman image: $UABI_PODMAN_IMAGE"
+echo "[INFO] Building podman image: $UBAI_PODMAN_IMAGE"
 podman build \
-  -t "$UABI_PODMAN_IMAGE" \
+  -t "$UBAI_PODMAN_IMAGE" \
   -f "$repo_root/image/Containerfile.rocky94-xrdp" \
   "$repo_root"
 
 echo "[INFO] Validating podman image..."
-podman run --rm "$UABI_PODMAN_IMAGE" /bin/bash -lc '
+podman run --rm "$UBAI_PODMAN_IMAGE" /bin/bash -lc '
 set -e
 cat /etc/rocky-release
 grep -q "Rocky Linux release 9.4" /etc/rocky-release
@@ -32,11 +32,11 @@ command -v startxfce4 || true
 command -v glxinfo || true
 '
 
-echo "[INFO] Saving podman image archive: $UABI_PODMAN_IMAGE_ARCHIVE"
-mkdir -p "$(dirname "$UABI_PODMAN_IMAGE_ARCHIVE")"
-tmp_archive="${UABI_PODMAN_IMAGE_ARCHIVE}.tmp"
+echo "[INFO] Saving podman image archive: $UBAI_PODMAN_IMAGE_ARCHIVE"
+mkdir -p "$(dirname "$UBAI_PODMAN_IMAGE_ARCHIVE")"
+tmp_archive="${UBAI_PODMAN_IMAGE_ARCHIVE}.tmp"
 rm -f "$tmp_archive"
-podman save -o "$tmp_archive" "$UABI_PODMAN_IMAGE"
-mv "$tmp_archive" "$UABI_PODMAN_IMAGE_ARCHIVE"
+podman save -o "$tmp_archive" "$UBAI_PODMAN_IMAGE"
+mv "$tmp_archive" "$UBAI_PODMAN_IMAGE_ARCHIVE"
 
-echo "[OK] Built podman image: $UABI_PODMAN_IMAGE"
+echo "[OK] Built podman image: $UBAI_PODMAN_IMAGE"

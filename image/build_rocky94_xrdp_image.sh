@@ -1,41 +1,41 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${UABI_BASE_IMAGE:=docker://rockylinux/rockylinux:9.4}"
-: "${UABI_IMAGE:=$HOME/runtime/enroot/uabi-cst-rocky94-xrdp.sqsh}"
-: "${UABI_ENROOT_NAME:=uabi-cst-rocky94-xrdp-build}"
-: "${UABI_BUILD_WORKDIR:=$HOME/runtime/enroot/build-uabi-cst-rocky94}"
-: "${UABI_BUILD_INCLUDE_CST_DEPS:=0}"
-export UABI_BUILD_INCLUDE_CST_DEPS
+: "${UBAI_BASE_IMAGE:=docker://rockylinux/rockylinux:9.4}"
+: "${UBAI_IMAGE:=$HOME/runtime/enroot/ubai-cst-rocky94-xrdp.sqsh}"
+: "${UBAI_ENROOT_NAME:=ubai-cst-rocky94-xrdp-build}"
+: "${UBAI_BUILD_WORKDIR:=$HOME/runtime/enroot/build-ubai-cst-rocky94}"
+: "${UBAI_BUILD_INCLUDE_CST_DEPS:=0}"
+export UBAI_BUILD_INCLUDE_CST_DEPS
 
-if [ "$UABI_BASE_IMAGE" = "docker://rockylinux:9.4" ]; then
+if [ "$UBAI_BASE_IMAGE" = "docker://rockylinux:9.4" ]; then
   echo "[INFO] Rewriting legacy Rocky image reference to docker://rockylinux/rockylinux:9.4"
-  UABI_BASE_IMAGE="docker://rockylinux/rockylinux:9.4"
+  UBAI_BASE_IMAGE="docker://rockylinux/rockylinux:9.4"
 fi
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
 
-mkdir -p "$(dirname "$UABI_IMAGE")" "$UABI_BUILD_WORKDIR"
+mkdir -p "$(dirname "$UBAI_IMAGE")" "$UBAI_BUILD_WORKDIR"
 
-echo "[INFO] Base image: $UABI_BASE_IMAGE"
-echo "[INFO] Target image: $UABI_IMAGE"
-echo "[INFO] Build workdir: $UABI_BUILD_WORKDIR"
+echo "[INFO] Base image: $UBAI_BASE_IMAGE"
+echo "[INFO] Target image: $UBAI_IMAGE"
+echo "[INFO] Build workdir: $UBAI_BUILD_WORKDIR"
 
-base_sqsh="$UABI_BUILD_WORKDIR/base.sqsh"
+base_sqsh="$UBAI_BUILD_WORKDIR/base.sqsh"
 
 if [ -f "$base_sqsh" ]; then
   echo "[OK] Reusing cached base image: $base_sqsh"
 else
   echo "[INFO] Importing OCI image with enroot..."
-  enroot import -o "$base_sqsh" "$UABI_BASE_IMAGE"
+  enroot import -o "$base_sqsh" "$UBAI_BASE_IMAGE"
 fi
 
-echo "[INFO] Creating writable enroot container: $UABI_ENROOT_NAME"
-enroot remove -f "$UABI_ENROOT_NAME" >/dev/null 2>&1 || true
-enroot create -n "$UABI_ENROOT_NAME" "$base_sqsh"
+echo "[INFO] Creating writable enroot container: $UBAI_ENROOT_NAME"
+enroot remove -f "$UBAI_ENROOT_NAME" >/dev/null 2>&1 || true
+enroot create -n "$UBAI_ENROOT_NAME" "$base_sqsh"
 
-install_script="$UABI_BUILD_WORKDIR/install_inside_container.sh"
+install_script="$UBAI_BUILD_WORKDIR/install_inside_container.sh"
 cat > "$install_script" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -59,21 +59,21 @@ dnf_base=(
   --setopt=retries=1
 )
 
-: "${UABI_DNF_TIMEOUT_SECONDS:=1200}"
-: "${UABI_DNF_ATTEMPTS:=2}"
+: "${UBAI_DNF_TIMEOUT_SECONDS:=1200}"
+: "${UBAI_DNF_ATTEMPTS:=2}"
 
 run_dnf() {
   echo "[INFO] dnf $*"
   local attempt rc
-  for attempt in $(seq 1 "$UABI_DNF_ATTEMPTS"); do
+  for attempt in $(seq 1 "$UBAI_DNF_ATTEMPTS"); do
     if command -v timeout >/dev/null 2>&1; then
-      timeout "$UABI_DNF_TIMEOUT_SECONDS" "${dnf_base[@]}" "$@" && return 0
+      timeout "$UBAI_DNF_TIMEOUT_SECONDS" "${dnf_base[@]}" "$@" && return 0
     else
       "${dnf_base[@]}" "$@" && return 0
     fi
     rc=$?
-    echo "[WARN] dnf attempt $attempt/$UABI_DNF_ATTEMPTS failed: rc=$rc" >&2
-    if [ "$attempt" -lt "$UABI_DNF_ATTEMPTS" ]; then
+    echo "[WARN] dnf attempt $attempt/$UBAI_DNF_ATTEMPTS failed: rc=$rc" >&2
+    if [ "$attempt" -lt "$UBAI_DNF_ATTEMPTS" ]; then
       rm -rf /var/cache/dnf/* || true
       sleep 5
     fi
@@ -81,7 +81,7 @@ run_dnf() {
   return "$rc"
 }
 
-UABI_DNF_TIMEOUT_SECONDS=240 run_dnf install dnf-plugins-core epel-release
+UBAI_DNF_TIMEOUT_SECONDS=240 run_dnf install dnf-plugins-core epel-release
 dnf config-manager --set-enabled crb || true
 
 run_dnf install \
@@ -101,7 +101,7 @@ run_dnf install \
 
 run_dnf install google-noto-sans-cjk-fonts || true
 
-if [ "${UABI_BUILD_INCLUDE_CST_DEPS:-0}" = "1" ]; then
+if [ "${UBAI_BUILD_INCLUDE_CST_DEPS:-0}" = "1" ]; then
   run_dnf install \
     libnsl libnsl2 libaio numactl-libs openmotif motif libpng libjpeg-turbo \
     libtiff expat freetype zlib bzip2-libs xz-libs libuuid libselinux \
@@ -131,18 +131,18 @@ EOF
   chmod +x /etc/xrdp/startwm.sh
 fi
 
-cat > /usr/local/bin/uabi-cst-shell <<'EOF'
+cat > /usr/local/bin/ubai-cst-shell <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 echo "Rocky: $(cat /etc/rocky-release 2>/dev/null || true)"
 echo "DISPLAY=${DISPLAY:-}"
 echo "Try: glxinfo | grep -E 'OpenGL vendor|OpenGL renderer|OpenGL version'"
-echo "Set CST launcher path in /usr/local/bin/uabi-start-cst if needed."
+echo "Set CST launcher path in /usr/local/bin/ubai-start-cst if needed."
 exec "${SHELL:-/bin/bash}"
 EOF
-chmod +x /usr/local/bin/uabi-cst-shell
+chmod +x /usr/local/bin/ubai-cst-shell
 
-cat > /usr/local/bin/uabi-start-cst <<'EOF'
+cat > /usr/local/bin/ubai-start-cst <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 CANDIDATES=(
@@ -155,10 +155,10 @@ for path in "${CANDIDATES[@]}"; do
     exec "$path" "$@"
   fi
 done
-echo "[ERROR] CST launcher not found. Edit /usr/local/bin/uabi-start-cst." >&2
+echo "[ERROR] CST launcher not found. Edit /usr/local/bin/ubai-start-cst." >&2
 exit 127
 EOF
-chmod +x /usr/local/bin/uabi-start-cst
+chmod +x /usr/local/bin/ubai-start-cst
 
 dnf clean all || true
 rm -rf /var/cache/dnf
@@ -170,19 +170,19 @@ chmod +x "$install_script"
 echo "[INFO] Installing packages inside enroot container..."
 enroot start --root --rw \
   --mount "$install_script:/tmp/install_inside_container.sh" \
-  "$UABI_ENROOT_NAME" /bin/bash /tmp/install_inside_container.sh
+  "$UBAI_ENROOT_NAME" /bin/bash /tmp/install_inside_container.sh
 
 echo "[INFO] Running CST placeholder hook..."
 enroot start --root --rw \
   --mount "$repo_root/image/install_cst_placeholder.sh:/tmp/install_cst_placeholder.sh" \
-  "$UABI_ENROOT_NAME" /bin/bash /tmp/install_cst_placeholder.sh || true
+  "$UBAI_ENROOT_NAME" /bin/bash /tmp/install_cst_placeholder.sh || true
 
 echo "[INFO] Exporting final sqsh..."
-rm -f "$UABI_IMAGE"
-enroot export -o "$UABI_IMAGE" "$UABI_ENROOT_NAME"
+rm -f "$UBAI_IMAGE"
+enroot export -o "$UBAI_IMAGE" "$UBAI_ENROOT_NAME"
 
 echo "[INFO] Validating final image..."
-enroot start --root --rw "$UABI_ENROOT_NAME" /bin/bash -lc '
+enroot start --root --rw "$UBAI_ENROOT_NAME" /bin/bash -lc '
 set -e
 cat /etc/rocky-release
 grep -q "Rocky Linux release 9.4" /etc/rocky-release
@@ -195,6 +195,6 @@ command -v glxinfo || true
 '
 
 echo "[INFO] Cleaning build container..."
-enroot remove -f "$UABI_ENROOT_NAME" >/dev/null 2>&1 || true
+enroot remove -f "$UBAI_ENROOT_NAME" >/dev/null 2>&1 || true
 
-echo "[OK] Built image: $UABI_IMAGE"
+echo "[OK] Built image: $UBAI_IMAGE"

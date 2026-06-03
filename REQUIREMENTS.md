@@ -1,66 +1,54 @@
-# REQUIREMENTS
+# Requirements
 
-## UABI/HPC 측 요구사항
+## UBAI/HPC
 
-필수:
+Required:
 
-- 계산노드에서 `enroot` 사용 가능
-- 계산노드에서 outbound SSH 가능
-- Docker/OCI image import 가능, 또는 login node에서 사전 import 가능
-- Slurm 사용 가능
-- 사용자 home 또는 scratch에 enroot image 저장 공간 확보
-- CST Studio Suite Linux 설치 파일 접근 가능
-- CST license server에 계산노드에서 접속 가능
+- Slurm
+- outbound SSH from compute node to gate node
+- enroot on compute nodes
+- enough home or scratch storage for the enroot image
+- access to the CST Studio Suite Linux installer
+- access from compute node/container to the CST license server
 
-권장:
+Recommended:
 
-- Rocky Linux host 또는 RHEL-compatible host
-- 충분한 local scratch
-- 최소 4 CPU cores
-- 최소 16 GB RAM
-- GUI 테스트는 2시간 이상 walltime 권장
-- CST solver는 모델 크기에 맞춰 별도 walltime, memory 요청
+- Rocky Linux or RHEL-compatible host environment
+- local scratch space
+- at least 4 CPU cores
+- at least 16 GB RAM
+- at least 2 hours walltime for GUI setup tests
 
-## Windows PC 측 요구사항
+## Windows PC
 
-필수:
+Required:
 
-- Windows 10 1809 이상 또는 Windows 11
-- Python 3.10 이상 권장
-- 관리자 권한으로 helper 실행 가능
-- GitHub PowerShell/Win32-OpenSSH 릴리스 다운로드 가능, 또는 프로젝트 로컬 OpenSSH 준비 가능
-- UABI 계산노드에서 Windows PC의 SSH 포트로 접속 가능해야 함
-  - 같은 학교망
-  - VPN
-  - 포트포워딩
-  - 또는 별도 relay server
+- Windows 10 1809 or later, or Windows 11
+- Python 3.10 or later
+- Windows OpenSSH client: `ssh.exe`, `scp.exe`, `ssh-keygen.exe`
+- Remote Desktop Client: `mstsc.exe`
+- outbound SSH access to `172.16.10.36:22`
 
-권장:
+Not required:
 
-- Windows Defender Firewall rule을 자동 생성할 수 있는 권한
-- Remote Desktop Client, `mstsc.exe`
-- 고정 IP 또는 접속 가능한 hostname
+- inbound firewall rule
+- port forwarding to this PC
 
-## CST 관련 요구사항
+## CST
 
-이 skeleton은 CST 설치 파일과 license를 포함하지 않는다.
+This skeleton does not include CST installer or license information. The user must provide:
 
-사용자가 채워야 할 값:
+- `UBAI_CST_INSTALLER_PATH`
+- `UBAI_CST_INSTALL_DIR`
+- `UBAI_CST_LICENSE_SERVER`
+- any required `LM_LICENSE_FILE`, `CST_LICENSE_FILE`, or vendor-specific environment variables
 
-- `UABI_CST_INSTALLER_PATH`
-- `UABI_CST_INSTALL_DIR`
-- `UABI_CST_LICENSE_SERVER`
-- 필요 시 `LM_LICENSE_FILE`, `CST_LICENSE_FILE`, vendor-specific 환경변수
+CST Linux CAD import may not behave exactly like Windows CST. A practical workflow is to prepare complex geometry on Windows CST and use UBAI for GUI verification, solve runs, or automation after the environment is stable.
 
-CST Linux의 CAD import 기능은 Windows와 완전히 같지 않을 수 있다. 복잡한 CAD import와 geometry preparation은 Windows CST에서 수행하고, UABI에서는 solve 또는 간단한 GUI 확인 위주로 쓰는 workflow를 권장한다.
+## Security
 
-## 보안 요구사항
-
-동료 연구실 배포 시 권장 사항:
-
-- SSH password login보다 key login 권장
-- Windows helper가 만든 firewall rule은 필요할 때만 enable
-- `RemoteAddress` 제한 가능하면 반드시 제한
-- xrdp password는 세션마다 바꾸기
-- Slurm 로그에 민감한 password가 남지 않게 주의
-- CST license 관련 정보는 repo에 commit하지 않기
+- Prefer SSH key login over password login.
+- Keep relay ports bound to loopback.
+- Do not expose xrdp or container sshd directly.
+- Change the XRDP root password per session when sharing the tool.
+- Do not commit secrets, private keys, CST license data, or `config/session.env`.

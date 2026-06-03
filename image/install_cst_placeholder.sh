@@ -5,9 +5,9 @@ set -euo pipefail
 # CST Studio Suite installer and license details are institution-specific and cannot be bundled.
 #
 # Expected environment variables:
-#   UABI_CST_INSTALLER_PATH
-#   UABI_CST_INSTALL_DIR
-#   UABI_CST_LICENSE_SERVER
+#   UBAI_CST_INSTALLER_PATH
+#   UBAI_CST_INSTALL_DIR
+#   UBAI_CST_LICENSE_SERVER
 #   LM_LICENSE_FILE
 #
 # Suggested workflow:
