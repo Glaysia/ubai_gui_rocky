@@ -34,15 +34,16 @@ REMOTE_PROJECT_FILES = ("GOAL.md", "LICENSE", "README.md", "REQUIREMENTS.md", "m
 
 # Snapshot from `sinfo` on the UBAI gate node. The UI intentionally does not
 # query this on every launch.
+# Performance is a rough RTX3080-normalized benchmark display value.
 PARTITION_RESOURCES: tuple[dict[str, str], ...] = (
     {
         "name": "gpu1",
         "nodes": "14",
         "state": "mix 10, alloc 2, drain 2",
         "cpu": "48",
-        "mem": "768000",
+        "mem_gb": "768",
         "gpu": "RTX 3090 x4/node",
-        "total_gpu": "56",
+        "perf": "4.8 x RTX3080/node",
         "node_range": "n001-n014",
     },
     {
@@ -50,9 +51,9 @@ PARTITION_RESOURCES: tuple[dict[str, str], ...] = (
         "nodes": "25",
         "state": "mix 13, alloc 11, drain 1",
         "cpu": "48",
-        "mem": "768000",
+        "mem_gb": "768",
         "gpu": "A10 x4/node",
-        "total_gpu": "100",
+        "perf": "4.0 x RTX3080/node",
         "node_range": "n015-n039",
     },
     {
@@ -60,9 +61,9 @@ PARTITION_RESOURCES: tuple[dict[str, str], ...] = (
         "nodes": "10",
         "state": "mix 5, alloc 5",
         "cpu": "48",
-        "mem": "768000",
+        "mem_gb": "768",
         "gpu": "-",
-        "total_gpu": "0",
+        "perf": "-",
         "node_range": "n040-n049",
     },
     {
@@ -70,9 +71,9 @@ PARTITION_RESOURCES: tuple[dict[str, str], ...] = (
         "nodes": "11",
         "state": "mix 8, alloc 3",
         "cpu": "56",
-        "mem": "1024000",
+        "mem_gb": "1024",
         "gpu": "A10 x4/node",
-        "total_gpu": "44",
+        "perf": "4.0 x RTX3080/node",
         "node_range": "n051-n061",
     },
     {
@@ -80,9 +81,9 @@ PARTITION_RESOURCES: tuple[dict[str, str], ...] = (
         "nodes": "10",
         "state": "mix 10",
         "cpu": "56",
-        "mem": "1024000",
+        "mem_gb": "1024",
         "gpu": "A6000 Ada x4/node",
-        "total_gpu": "40",
+        "perf": "10.5 x RTX3080/node",
         "node_range": "n062-n071",
     },
     {
@@ -90,9 +91,9 @@ PARTITION_RESOURCES: tuple[dict[str, str], ...] = (
         "nodes": "29",
         "state": "mix 14, alloc 14, resv 1",
         "cpu": "56",
-        "mem": "1024000",
-        "gpu": "A6000 x4/node; n091 x3",
-        "total_gpu": "115",
+        "mem_gb": "1024",
+        "gpu": "A6000 x4/node",
+        "perf": "5.2 x RTX3080/node",
         "node_range": "n072-n100",
     },
     {
@@ -100,9 +101,9 @@ PARTITION_RESOURCES: tuple[dict[str, str], ...] = (
         "nodes": "6",
         "state": "alloc 6",
         "cpu": "64",
-        "mem": "1024000",
+        "mem_gb": "1024",
         "gpu": "A6000 x4/node",
-        "total_gpu": "24",
+        "perf": "5.2 x RTX3080/node",
         "node_range": "n101-n106",
     },
     {
@@ -110,9 +111,9 @@ PARTITION_RESOURCES: tuple[dict[str, str], ...] = (
         "nodes": "10",
         "state": "mix 7, alloc 1, drain 1, drng 1",
         "cpu": "256",
-        "mem": "1031516-1031519",
+        "mem_gb": "1032",
         "gpu": "-",
-        "total_gpu": "0",
+        "perf": "-",
         "node_range": "n107-n116",
     },
 )
@@ -366,16 +367,16 @@ class UabiManager(tk.Tk):
             combo.bind("<<ComboboxSelected>>", self._on_partition_selected)
 
     def _build_partition_resource_table(self, parent: ttk.Frame) -> None:
-        columns = ("partition", "nodes", "state", "cpu", "mem", "gpu", "total_gpu", "node_range")
+        columns = ("partition", "nodes", "state", "cpu", "mem_gb", "gpu", "perf", "node_range")
         tree = ttk.Treeview(parent, columns=columns, show="headings", height=len(PARTITION_RESOURCES))
         headings = {
             "partition": "Partition",
             "nodes": "Nodes",
             "state": "State",
             "cpu": "CPU/node",
-            "mem": "Mem MB/node",
+            "mem_gb": "Mem GB/node",
             "gpu": "GPU/node",
-            "total_gpu": "Total GPU",
+            "perf": "Perf/node",
             "node_range": "Node Range",
         }
         widths = {
@@ -383,9 +384,9 @@ class UabiManager(tk.Tk):
             "nodes": 54,
             "state": 170,
             "cpu": 74,
-            "mem": 98,
-            "gpu": 180,
-            "total_gpu": 74,
+            "mem_gb": 92,
+            "gpu": 170,
+            "perf": 160,
             "node_range": 120,
         }
         for column in columns:
@@ -401,9 +402,9 @@ class UabiManager(tk.Tk):
                     item["nodes"],
                     item["state"],
                     item["cpu"],
-                    item["mem"],
+                    item["mem_gb"],
                     item["gpu"],
-                    item["total_gpu"],
+                    item["perf"],
                     item["node_range"],
                 ),
             )
@@ -455,10 +456,10 @@ class UabiManager(tk.Tk):
         if self.partition_tree and self.partition_tree.exists(partition):
             self.partition_tree.selection_set(partition)
             self.partition_tree.focus(partition)
-        gpu_text = "GPU 없음" if item["total_gpu"] == "0" else f'{item["gpu"]}, 총 {item["total_gpu"]}장'
+        gpu_text = "GPU 없음" if item["gpu"] == "-" else f'{item["gpu"]}, 성능 {item["perf"]}'
         self.partition_detail_var.set(
             f'선택: {item["name"]} | 노드 {item["nodes"]}개 | CPU {item["cpu"]}/node | '
-            f'Mem {item["mem"]} MB/node | {gpu_text} | {item["state"]}'
+            f'Mem {item["mem_gb"]} GB/node | {gpu_text} | {item["state"]}'
         )
 
     def save_state(self, **updates: str) -> None:
