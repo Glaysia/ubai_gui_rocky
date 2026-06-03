@@ -133,6 +133,20 @@ DEFAULTS = {
     "gpus": "",
 }
 
+NORD = {
+    "polar0": "#2E3440",
+    "polar1": "#3B4252",
+    "polar2": "#434C5E",
+    "polar3": "#4C566A",
+    "snow0": "#D8DEE9",
+    "snow1": "#E5E9F0",
+    "snow2": "#ECEFF4",
+    "frost0": "#8FBCBB",
+    "frost1": "#88C0D0",
+    "frost2": "#81A1C1",
+    "frost3": "#5E81AC",
+}
+
 
 def load_json(path: Path) -> dict[str, str]:
     if not path.exists():
@@ -239,6 +253,7 @@ def append_managed_block(path: Path, begin: str, end: str, block: str) -> None:
 class UbaiManager(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
+        self._configure_theme()
         self.title("UBAI 계산노드 컨테이너 관리자")
         self.geometry("980x720")
         self.minsize(860, 620)
@@ -265,6 +280,128 @@ class UbaiManager(tk.Tk):
         self._build_ui()
         self.after(100, self._drain_messages)
         self.after(250, self._tick_connection_indicator)
+
+    def _configure_theme(self) -> None:
+        self.configure(background=NORD["polar0"])
+        self.option_add("*TCombobox*Listbox.background", NORD["polar1"])
+        self.option_add("*TCombobox*Listbox.foreground", NORD["snow0"])
+        self.option_add("*TCombobox*Listbox.selectBackground", NORD["frost3"])
+        self.option_add("*TCombobox*Listbox.selectForeground", NORD["snow2"])
+        self.option_add("*insertBackground", NORD["snow2"])
+
+        style = ttk.Style(self)
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
+
+        style.configure(
+            ".",
+            background=NORD["polar0"],
+            foreground=NORD["snow0"],
+            fieldbackground=NORD["polar1"],
+            bordercolor=NORD["polar3"],
+            lightcolor=NORD["polar2"],
+            darkcolor=NORD["polar0"],
+            troughcolor=NORD["polar1"],
+            focuscolor=NORD["frost2"],
+        )
+        style.configure("TFrame", background=NORD["polar0"])
+        style.configure("TLabel", background=NORD["polar0"], foreground=NORD["snow0"])
+        style.configure(
+            "TLabelframe",
+            background=NORD["polar0"],
+            foreground=NORD["snow0"],
+            bordercolor=NORD["polar3"],
+            relief="solid",
+        )
+        style.configure(
+            "TLabelframe.Label",
+            background=NORD["polar0"],
+            foreground=NORD["frost1"],
+        )
+        style.configure(
+            "TButton",
+            background=NORD["polar2"],
+            foreground=NORD["snow2"],
+            bordercolor=NORD["polar3"],
+            focusthickness=1,
+            focuscolor=NORD["frost2"],
+            padding=(10, 5),
+        )
+        style.map(
+            "TButton",
+            background=[
+                ("disabled", NORD["polar1"]),
+                ("pressed", NORD["frost3"]),
+                ("active", NORD["polar3"]),
+            ],
+            foreground=[("disabled", NORD["polar3"])],
+        )
+        style.configure(
+            "TEntry",
+            fieldbackground=NORD["polar1"],
+            foreground=NORD["snow2"],
+            bordercolor=NORD["polar3"],
+            lightcolor=NORD["polar3"],
+            darkcolor=NORD["polar0"],
+            insertcolor=NORD["snow2"],
+        )
+        style.map(
+            "TEntry",
+            fieldbackground=[("disabled", NORD["polar0"]), ("readonly", NORD["polar1"])],
+            foreground=[("disabled", NORD["polar3"])],
+        )
+        style.configure(
+            "TCombobox",
+            fieldbackground=NORD["polar1"],
+            background=NORD["polar2"],
+            foreground=NORD["snow2"],
+            arrowcolor=NORD["frost1"],
+            bordercolor=NORD["polar3"],
+            lightcolor=NORD["polar3"],
+            darkcolor=NORD["polar0"],
+            insertcolor=NORD["snow2"],
+        )
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", NORD["polar1"])],
+            selectbackground=[("readonly", NORD["polar1"])],
+            selectforeground=[("readonly", NORD["snow2"])],
+            background=[("active", NORD["polar3"])],
+            foreground=[("disabled", NORD["polar3"])],
+        )
+        style.configure(
+            "Treeview",
+            background=NORD["polar1"],
+            fieldbackground=NORD["polar1"],
+            foreground=NORD["snow0"],
+            bordercolor=NORD["polar3"],
+            lightcolor=NORD["polar3"],
+            darkcolor=NORD["polar0"],
+            rowheight=24,
+        )
+        style.configure(
+            "Treeview.Heading",
+            background=NORD["polar2"],
+            foreground=NORD["snow2"],
+            bordercolor=NORD["polar3"],
+            relief="flat",
+        )
+        style.map(
+            "Treeview",
+            background=[("selected", NORD["frost3"])],
+            foreground=[("selected", NORD["snow2"])],
+        )
+        style.map("Treeview.Heading", background=[("active", NORD["polar3"])])
+        style.configure(
+            "Vertical.TScrollbar",
+            background=NORD["polar2"],
+            troughcolor=NORD["polar0"],
+            bordercolor=NORD["polar3"],
+            arrowcolor=NORD["snow0"],
+        )
+        style.map("Vertical.TScrollbar", background=[("active", NORD["polar3"])])
 
     def _build_ui(self) -> None:
         self.columnconfigure(0, weight=1)
@@ -318,7 +455,19 @@ class UbaiManager(tk.Tk):
         self.output.grid(row=0, column=0, sticky="nsew")
         scroll = ttk.Scrollbar(output_frame, orient="vertical", command=self.output.yview)
         scroll.grid(row=0, column=1, sticky="ns")
-        self.output.configure(yscrollcommand=scroll.set)
+        self.output.configure(
+            yscrollcommand=scroll.set,
+            background=NORD["polar1"],
+            foreground=NORD["snow0"],
+            insertbackground=NORD["snow2"],
+            selectbackground=NORD["frost3"],
+            selectforeground=NORD["snow2"],
+            relief="flat",
+            borderwidth=1,
+            highlightthickness=1,
+            highlightbackground=NORD["polar3"],
+            highlightcolor=NORD["frost2"],
+        )
         ttk.Label(output_frame, textvariable=self.connection_var).grid(row=1, column=0, columnspan=2, sticky="ew", padx=6, pady=(4, 6))
 
     def _entry(
