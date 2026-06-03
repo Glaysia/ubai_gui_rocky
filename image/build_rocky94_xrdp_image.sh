@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${UABI_BASE_IMAGE:=docker://rockylinux:9.4}"
+: "${UABI_BASE_IMAGE:=docker://rockylinux/rockylinux:9.4}"
 : "${UABI_IMAGE:=$HOME/runtime/enroot/uabi-cst-rocky94-xrdp.sqsh}"
 : "${UABI_ENROOT_NAME:=uabi-cst-rocky94-xrdp-build}"
 : "${UABI_BUILD_WORKDIR:=$HOME/runtime/enroot/build-uabi-cst-rocky94}"
+: "${UABI_BUILD_INCLUDE_CST_DEPS:=0}"
+export UABI_BUILD_INCLUDE_CST_DEPS
+
+if [ "$UABI_BASE_IMAGE" = "docker://rockylinux:9.4" ]; then
+  echo "[INFO] Rewriting legacy Rocky image reference to docker://rockylinux/rockylinux:9.4"
+  UABI_BASE_IMAGE="docker://rockylinux/rockylinux:9.4"
+fi
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
@@ -15,13 +22,14 @@ echo "[INFO] Base image: $UABI_BASE_IMAGE"
 echo "[INFO] Target image: $UABI_IMAGE"
 echo "[INFO] Build workdir: $UABI_BUILD_WORKDIR"
 
-rm -rf "$UABI_BUILD_WORKDIR"
-mkdir -p "$UABI_BUILD_WORKDIR"
-
 base_sqsh="$UABI_BUILD_WORKDIR/base.sqsh"
 
-echo "[INFO] Importing OCI image with enroot..."
-enroot import -o "$base_sqsh" "$UABI_BASE_IMAGE"
+if [ -f "$base_sqsh" ]; then
+  echo "[OK] Reusing cached base image: $base_sqsh"
+else
+  echo "[INFO] Importing OCI image with enroot..."
+  enroot import -o "$base_sqsh" "$UABI_BASE_IMAGE"
+fi
 
 echo "[INFO] Creating writable enroot container: $UABI_ENROOT_NAME"
 enroot remove -f "$UABI_ENROOT_NAME" >/dev/null 2>&1 || true
@@ -40,89 +48,66 @@ sed -ri \
   -e 's|^#?baseurl=http://dl.rockylinux.org/\$contentdir/\$releasever/|baseurl=https://dl.rockylinux.org/vault/rocky/9.4/|g' \
   /etc/yum.repos.d/rocky*.repo
 
-dnf -y install dnf-plugins-core epel-release
+dnf_base=(
+  dnf -y
+  --allowerasing
+  --setopt=install_weak_deps=False
+  --setopt=metadata_timer_sync=0
+  --setopt=max_parallel_downloads=10
+  --setopt=ip_resolve=4
+  --setopt=timeout=30
+  --setopt=retries=1
+)
+
+: "${UABI_DNF_TIMEOUT_SECONDS:=1200}"
+: "${UABI_DNF_ATTEMPTS:=2}"
+
+run_dnf() {
+  echo "[INFO] dnf $*"
+  local attempt rc
+  for attempt in $(seq 1 "$UABI_DNF_ATTEMPTS"); do
+    if command -v timeout >/dev/null 2>&1; then
+      timeout "$UABI_DNF_TIMEOUT_SECONDS" "${dnf_base[@]}" "$@" && return 0
+    else
+      "${dnf_base[@]}" "$@" && return 0
+    fi
+    rc=$?
+    echo "[WARN] dnf attempt $attempt/$UABI_DNF_ATTEMPTS failed: rc=$rc" >&2
+    if [ "$attempt" -lt "$UABI_DNF_ATTEMPTS" ]; then
+      rm -rf /var/cache/dnf/* || true
+      sleep 5
+    fi
+  done
+  return "$rc"
+}
+
+UABI_DNF_TIMEOUT_SECONDS=240 run_dnf install dnf-plugins-core epel-release
 dnf config-manager --set-enabled crb || true
 
-dnf -y install \
+run_dnf install \
   bash coreutils findutils procps-ng which tar gzip bzip2 xz unzip zip \
-  hostname iproute iputils net-tools lsof less vim nano sudo shadow-utils \
-  openssh-clients openssh-server ca-certificates curl wget rsync git python3
+  hostname iproute iputils net-tools lsof less vim-minimal nano shadow-utils \
+  openssh-clients openssh-server ca-certificates curl wget rsync git python3 \
+  firefox \
+  xrdp tigervnc-server xorgxrdp xorg-x11-xauth xorg-x11-utils xterm dbus-x11 \
+  mesa-demos mesa-libGL mesa-dri-drivers fontconfig dejavu-sans-fonts \
+  glibc-langpack-en glibc-langpack-ko psmisc htop file
 
-dnf -y groupinstall "Xfce" || true
+run_dnf install \
+  xfce4-session xfce4-panel xfdesktop xfwm4 xfce4-settings xfce4-terminal Thunar || {
+  echo "[WARN] Minimal Xfce package install failed; trying Xfce groupinstall."
+  run_dnf groupinstall "Xfce"
+}
 
-dnf -y install \
-  xrdp \
-  tigervnc-server \
-  xorgxrdp \
-  xorg-x11-server-Xorg \
-  xorg-x11-server-Xvfb \
-  xorg-x11-xauth \
-  xorg-x11-utils \
-  xorg-x11-apps \
-  xterm \
-  dbus-x11 \
-  mesa-libGL \
-  mesa-libGLU \
-  mesa-dri-drivers \
-  libglvnd \
-  libglvnd-glx \
-  libglvnd-egl \
-  libX11 \
-  libXext \
-  libXrender \
-  libXt \
-  libXi \
-  libXrandr \
-  libXcursor \
-  libXinerama \
-  libXcomposite \
-  libXdamage \
-  libXfixes \
-  libxcb \
-  libxkbcommon \
-  libxkbcommon-x11 \
-  fontconfig \
-  dejavu-sans-fonts \
-  google-noto-sans-cjk-fonts \
-  glibc-langpack-en \
-  glibc-langpack-ko \
-  gtk2 \
-  gtk3 \
-  nss \
-  nspr \
-  alsa-lib \
-  pulseaudio-libs \
-  libXScrnSaver \
-  at-spi2-atk \
-  at-spi2-core \
-  cups-libs \
-  libdrm \
-  libxshmfence \
-  vulkan-loader \
-  psmisc \
-  htop \
-  strace \
-  file \
-  redhat-lsb-core || true
+run_dnf install google-noto-sans-cjk-fonts || true
 
-dnf -y install \
-  libnsl \
-  libnsl2 \
-  libaio \
-  numactl-libs \
-  openmotif \
-  motif \
-  libpng \
-  libjpeg-turbo \
-  libtiff \
-  expat \
-  freetype \
-  zlib \
-  bzip2-libs \
-  xz-libs \
-  libuuid \
-  libselinux \
-  libxcrypt-compat || true
+if [ "${UABI_BUILD_INCLUDE_CST_DEPS:-0}" = "1" ]; then
+  run_dnf install \
+    libnsl libnsl2 libaio numactl-libs openmotif motif libpng libjpeg-turbo \
+    libtiff expat freetype zlib bzip2-libs xz-libs libuuid libselinux \
+    libxcrypt-compat gtk2 gtk3 nss nspr alsa-lib pulseaudio-libs cups-libs \
+    libdrm libxshmfence vulkan-loader strace redhat-lsb-core || true
+fi
 
 mkdir -p /etc/xrdp /run/xrdp /var/run/xrdp /var/log/xrdp
 if [ -x /usr/bin/xrdp-keygen ]; then
@@ -175,8 +160,9 @@ exit 127
 EOF
 chmod +x /usr/local/bin/uabi-start-cst
 
-dnf clean all
-rm -rf /var/cache/dnf /tmp/*
+dnf clean all || true
+rm -rf /var/cache/dnf
+find /tmp -mindepth 1 ! -name install_inside_container.sh -exec rm -rf {} + 2>/dev/null || true
 EOS
 
 chmod +x "$install_script"
@@ -203,6 +189,7 @@ grep -q "Rocky Linux release 9.4" /etc/rocky-release
 command -v xrdp
 command -v xrdp-sesman
 command -v sshd
+command -v firefox
 command -v startxfce4 || true
 command -v glxinfo || true
 '

@@ -29,6 +29,8 @@ LOCAL_CONTAINER_SSH_KEY = STATE_ROOT / "container_ssh" / "uabi_container_root_ed
 LOCAL_CONTAINER_SSH_PORT = "9922"
 CONTAINER_SSH_PORT = "9922"
 SPINNER_FRAMES = ("\\", "|", "/", "-")
+REMOTE_PROJECT_DIRS = ("config", "container", "docs", "image", "scripts", "slurm", "tools")
+REMOTE_PROJECT_FILES = ("GOAL.md", "LICENSE", "README.md", "REQUIREMENTS.md", "manifest.json")
 
 DEFAULTS = {
     "uabi_user": "harry261",
@@ -399,6 +401,75 @@ fi
             check=False,
         )
 
+    def deploy_remote_project(self, values: dict[str, str]) -> None:
+        self.post_log("[INFO] 원격 프로젝트 파일 확인/배포 중...")
+        prepare = f"""
+set -euo pipefail
+mkdir -p {remote_cd_expr(REMOTE_REPO)}
+"""
+        result = self.run_remote(values, prepare, timeout=30)
+        if result.returncode != 0:
+            raise RuntimeError((result.stderr or result.stdout or "remote project directory setup failed").strip())
+
+        target = f"{ssh_target(values)}:{REMOTE_REPO}/"
+        dirs = [str(REPO_ROOT / name) for name in REMOTE_PROJECT_DIRS if (REPO_ROOT / name).is_dir()]
+        if dirs:
+            upload_dirs = subprocess.run(
+                self.scp_base(values) + ["-r", *dirs, target],
+                cwd=REPO_ROOT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                capture_output=True,
+                timeout=180,
+                check=False,
+            )
+            if upload_dirs.returncode != 0:
+                raise RuntimeError((upload_dirs.stderr or upload_dirs.stdout or "remote directory upload failed").strip())
+
+        files = [str(REPO_ROOT / name) for name in REMOTE_PROJECT_FILES if (REPO_ROOT / name).is_file()]
+        if files:
+            upload_files = subprocess.run(
+                self.scp_base(values) + [*files, target],
+                cwd=REPO_ROOT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                capture_output=True,
+                timeout=60,
+                check=False,
+            )
+            if upload_files.returncode != 0:
+                raise RuntimeError((upload_files.stderr or upload_files.stdout or "remote file upload failed").strip())
+
+        finalize = f"""
+set -euo pipefail
+cd {remote_cd_expr(REMOTE_REPO)}
+mkdir -p config logs
+if [ ! -f config/session.env ]; then
+  cp config/example.env config/session.env
+fi
+sed -i 's|docker://rockylinux:9.4|docker://rockylinux/rockylinux:9.4|g' config/session.env
+if grep -q '^export UABI_CONTAINER_BACKEND=' config/session.env; then
+  sed -i 's|^export UABI_CONTAINER_BACKEND=.*|export UABI_CONTAINER_BACKEND="enroot"|' config/session.env
+else
+  printf '\\nexport UABI_CONTAINER_BACKEND="enroot"\\n' >> config/session.env
+fi
+if grep -q '^export UABI_IMAGE_BACKEND=' config/session.env; then
+  sed -i 's|^export UABI_IMAGE_BACKEND=.*|export UABI_IMAGE_BACKEND="enroot"|' config/session.env
+else
+  printf 'export UABI_IMAGE_BACKEND="enroot"\\n' >> config/session.env
+fi
+chmod +x scripts/*.sh image/*.sh container/*.sh tools/*.py 2>/dev/null || true
+echo "[OK] remote project ready: $HOME/ubai_gui"
+"""
+        result = self.run_remote(values, finalize, timeout=60)
+        output = ((result.stdout or "") + (result.stderr or "")).strip()
+        if output:
+            self.post_log(output)
+        if result.returncode != 0:
+            raise RuntimeError("remote project finalize failed")
+
     def ensure_reverse_key(self, values: dict[str, str]) -> None:
         LOCAL_REVERSE_KEY.parent.mkdir(parents=True, exist_ok=True)
         public_key = Path(str(LOCAL_REVERSE_KEY) + ".pub")
@@ -587,6 +658,7 @@ Host localhost
         self.post_log(f"[OK] 입력값 반영: {CONFIG_PATH}")
         self.ensure_reverse_key(values)
         container_ssh_public_key = self.ensure_container_ssh_key()
+        self.deploy_remote_project(values)
         self.start_local_forward(values)
         self.cancel_remote_jobs(values)
         self.wait_remote_clear(values)
@@ -601,6 +673,7 @@ Host localhost
             env_export("UABI_SLURM_MEM", values["mem"]),
             env_export("UABI_SLURM_GPUS", values["gpus"]),
             env_export("UABI_CONTAINER_BACKEND", "enroot"),
+            env_export("UABI_IMAGE_BACKEND", "enroot"),
             env_export("UABI_XRDP_PASSWORD", values["xrdp_password"]),
             env_export("UABI_XRDP_PORT_IN_CONTAINER", values["xrdp_port"]),
             env_export("UABI_CONTAINER_SSH_PORT", CONTAINER_SSH_PORT),
@@ -628,6 +701,65 @@ cat >> "$ui_env" <<'UABI_UI_ENV'
 # Appended by windows/uabi_manager_gui.py
 {exports}
 UABI_UI_ENV
+set +u
+source "$ui_env"
+set -u
+if [ "${{UABI_CONTAINER_BACKEND:-enroot}}" = "enroot" ] && [ ! -f "$UABI_IMAGE" ]; then
+  echo "[INFO] enroot image not found; submitting automatic image build job: $UABI_IMAGE"
+  existing=$(squeue -h -u "$USER" -o "%i %j" | awk '$2 == "uabi-build-image" {{print $1; exit}}')
+  if [ -n "$existing" ]; then
+    echo "[INFO] Existing image build job found: $existing"
+    echo "UABI_UI_BUILD_JOB_ID=$existing"
+    echo "UABI_UI_IMAGE_PATH=$UABI_IMAGE"
+    exit 0
+  fi
+  build_time="${{UABI_IMAGE_BUILD_TIME:-${{UABI_SLURM_TIME:-04:00:00}}}}"
+  build_cpus="${{UABI_IMAGE_BUILD_CPUS:-${{UABI_SLURM_CPUS_PER_TASK:-4}}}}"
+  build_mem="${{UABI_IMAGE_BUILD_MEM:-${{UABI_SLURM_MEM:-16G}}}}"
+  build_args=()
+  [ -n "${{UABI_SLURM_PARTITION:-}}" ] && build_args+=(--partition="$UABI_SLURM_PARTITION")
+  [ -n "$build_time" ] && build_args+=(--time="$build_time")
+  [ -n "$build_cpus" ] && build_args+=(--cpus-per-task="$build_cpus")
+  [ -n "$build_mem" ] && build_args+=(--mem="$build_mem")
+  mkdir -p logs
+  repo_dir=$(pwd)
+  wrap=$(printf 'cd %q && ./scripts/build_image.sh %q' "$repo_dir" "$ui_env")
+  out=$(sbatch "${{build_args[@]}}" \
+    --job-name=uabi-build-image \
+    --output=logs/uabi-build-image-%j.out \
+    --error=logs/uabi-build-image-%j.err \
+    --wrap="$wrap" 2>&1)
+  printf '%s\\n' "$out"
+  build_job=$(printf '%s\\n' "$out" | awk '/Submitted batch job/ {{print $4; exit}}')
+  if [ -z "$build_job" ]; then
+    exit 5
+  fi
+  echo "UABI_UI_BUILD_JOB_ID=$build_job"
+  echo "UABI_UI_IMAGE_PATH=$UABI_IMAGE"
+  exit 0
+fi
+echo "UABI_UI_IMAGE_READY=1"
+echo "UABI_UI_IMAGE_PATH=$UABI_IMAGE"
+"""
+        self.post_log("[INFO] 원격 session env 준비 및 이미지 확인 중...")
+        result = self.run_remote(values, script, timeout=120)
+        output = (result.stdout or "") + (result.stderr or "")
+        self.post_log(output.rstrip() or f"[INFO] ssh rc={result.returncode}")
+        if result.returncode != 0:
+            raise RuntimeError(f"remote image preparation failed: rc={result.returncode}")
+
+        build_match = re.search(r"UABI_UI_BUILD_JOB_ID=(\d+)", output)
+        image_match = re.search(r"UABI_UI_IMAGE_PATH=(.+)", output)
+        if build_match:
+            image_path = image_match.group(1).strip() if image_match else ""
+            self._wait_until_image_ready(values, build_match.group(1), image_path)
+            if self.stop_requested.is_set():
+                return "꺼짐"
+
+        script = f"""
+set -euo pipefail
+cd {remote_cd_expr(REMOTE_REPO)}
+ui_env=config/ui-session.env
 out=$(./scripts/submit_xrdp_job.sh "$ui_env" 2>&1)
 printf '%s\\n' "$out"
 job=$(printf '%s\\n' "$out" | awk '/Submitted batch job/ {{print $4; exit}}')
@@ -655,6 +787,51 @@ fi
             self.post_log("[WARN] job id를 찾지 못했습니다. 상태 새로고침으로 확인하세요.")
             return "대기 중"
 
+    def _wait_until_image_ready(self, values: dict[str, str], build_job_id: str, image_path: str) -> None:
+        self.post_status("이미지 빌드 중")
+        self.post_log(f"[INFO] enroot 이미지 자동 빌드 대기 중: job={build_job_id}")
+        for _ in range(240):
+            if self.stop_requested.is_set():
+                self.post_log("[INFO] 컨테이너 끄기 요청으로 이미지 빌드 대기를 중단했습니다.")
+                return
+            script = f"""
+set +e
+cd {remote_cd_expr(REMOTE_REPO)}
+job={shlex.quote(build_job_id)}
+image={shlex.quote(image_path)}
+if [ -n "$image" ] && [ -f "$image" ]; then
+  echo "[OK] enroot image ready: $image"
+  ls -lh "$image"
+  exit 0
+fi
+if squeue -h -j "$job" | grep -q .; then
+  echo "[INFO] image build job is still running: $job"
+  echo "--- build stdout tail"
+  tail -n 8 "logs/uabi-build-image-${{job}}.out" 2>/dev/null || true
+  echo "--- build stderr tail"
+  tail -n 8 "logs/uabi-build-image-${{job}}.err" 2>/dev/null || true
+  exit 10
+fi
+echo "[ERROR] image build job ended but image is missing: $image"
+sacct -j "$job" --format=JobID,JobName,State,ExitCode,Elapsed,NodeList,Reason 2>/dev/null || true
+echo "--- build stdout"
+tail -n 120 "logs/uabi-build-image-${{job}}.out" 2>/dev/null || true
+echo "--- build stderr"
+tail -n 120 "logs/uabi-build-image-${{job}}.err" 2>/dev/null || true
+exit 2
+"""
+            result = self.run_remote(values, script, timeout=60)
+            output = ((result.stdout or "") + (result.stderr or "")).strip()
+            if output:
+                self.post_log(output)
+            if result.returncode == 0:
+                self.post_status("켜는 중")
+                return
+            if result.returncode != 10:
+                raise RuntimeError("enroot image build failed")
+            threading.Event().wait(30)
+        raise RuntimeError("enroot image build did not finish within 2 hours")
+
     def _wait_until_ready(self, values: dict[str, str], job_id: str) -> None:
         script = f"""
 set -euo pipefail
@@ -667,6 +844,15 @@ for i in $(seq 1 90); do
   fi
   if grep -q "\\[ERROR\\]" "logs/uabi-cst-xrdp-${{job}}.out" 2>/dev/null; then
     tail -n 80 "logs/uabi-cst-xrdp-${{job}}.out"
+    exit 2
+  fi
+  if ! squeue -h -j "$job" | grep -q .; then
+    echo "[ERROR] Slurm job is no longer running: $job"
+    sacct -j "$job" --format=JobID,JobName,State,ExitCode,Elapsed,NodeList,Reason 2>/dev/null || true
+    echo "--- Job stdout"
+    tail -n 120 "logs/uabi-cst-xrdp-${{job}}.out" 2>/dev/null || true
+    echo "--- Job stderr"
+    tail -n 120 "logs/uabi-cst-xrdp-${{job}}.err" 2>/dev/null || true
     exit 2
   fi
   sleep 5
@@ -704,7 +890,7 @@ ids=""
 if [ -n "$preferred" ]; then
   ids="$preferred"
 fi
-extra=$(squeue -h -u "$USER" -o "%i %j" | awk '$2 ~ /^uabi-cst/ {{print $1}}')
+extra=$(squeue -h -u "$USER" -o "%i %j" | awk '$2 ~ /^uabi-(cst|build-image)/ {{print $1}}')
 for id in $extra; do
   case " $ids " in
     *" $id "*) ;;
@@ -713,7 +899,7 @@ for id in $extra; do
 done
 ids=$(printf '%s\\n' "$ids" | xargs 2>/dev/null || true)
 if [ -z "$ids" ]; then
-  echo "[INFO] 실행 중인 UABI XRDP job이 없습니다."
+  echo "[INFO] 실행 중인 UABI XRDP/build job이 없습니다."
 else
   echo "[INFO] scancel $ids"
   scancel $ids 2>/dev/null || true

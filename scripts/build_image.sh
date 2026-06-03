@@ -14,7 +14,7 @@ source "$env_file"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
 
-backend="${UABI_IMAGE_BACKEND:-auto}"
+backend="${UABI_IMAGE_BACKEND:-enroot}"
 case "$backend" in
   auto)
     if command -v enroot >/dev/null 2>&1; then

@@ -15,7 +15,7 @@ The user wants to provide a reproducible solution for colleagues who need to run
 Proposed solution:
 
 - `enroot` on compute node
-- `docker://rockylinux:9.4`
+- `docker://rockylinux/rockylinux:9.4`
 - desktop environment plus OpenGL/X11 and CST dependencies
 - xrdp server inside container
 - sshd on `127.0.0.1:9922` inside container for VSCode Remote-SSH
@@ -46,7 +46,7 @@ If Windows PC is behind NAT and not reachable, this will fail. Add a relay mode 
 
 ## Next implementation tasks
 
-1. Test `enroot import docker://rockylinux:9.4` on UABI login/compute node.
+1. Test `enroot import docker://rockylinux/rockylinux:9.4` on UABI login/compute node.
 2. Validate package names on Rocky 9.4:
    - `xrdp`
    - `xorgxrdp`

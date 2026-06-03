@@ -34,6 +34,17 @@ echo "[INFO] Node: $(hostname)"
 echo "[INFO] Image: $UABI_IMAGE"
 echo "[INFO] Reverse target: $UABI_REVERSE_SSH_TARGET"
 
+if ! command -v enroot >/dev/null 2>&1; then
+  echo "[ERROR] enroot not found on compute node: $(hostname)" >&2
+  exit 1
+fi
+
+if [ ! -f "$UABI_IMAGE" ]; then
+  echo "[ERROR] enroot image not found: $UABI_IMAGE" >&2
+  echo "[INFO] Build the image before submitting the XRDP job." >&2
+  exit 1
+fi
+
 container_name="uabi-cst-xrdp-${job_id}"
 enroot_base="$job_root/enroot"
 mkdir -p "$enroot_base"/{runtime,cache,data,tmp}
@@ -57,8 +68,15 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 echo "[INFO] Creating enroot container..."
-ENROOT_RUNTIME_PATH="$enroot_base/runtime" ENROOT_CACHE_PATH="$enroot_base/cache" ENROOT_DATA_PATH="$enroot_base/data" ENROOT_TEMP_PATH="$enroot_base/tmp" \
-  enroot create -n "$container_name" "$UABI_IMAGE" >"$job_root/logs/enroot.create.stdout" 2>"$job_root/logs/enroot.create.stderr"
+if ! ENROOT_RUNTIME_PATH="$enroot_base/runtime" ENROOT_CACHE_PATH="$enroot_base/cache" ENROOT_DATA_PATH="$enroot_base/data" ENROOT_TEMP_PATH="$enroot_base/tmp" \
+  enroot create -n "$container_name" "$UABI_IMAGE" >"$job_root/logs/enroot.create.stdout" 2>"$job_root/logs/enroot.create.stderr"; then
+  echo "[ERROR] enroot create failed" >&2
+  echo "--- enroot.create.stdout" >&2
+  cat "$job_root/logs/enroot.create.stdout" >&2 || true
+  echo "--- enroot.create.stderr" >&2
+  cat "$job_root/logs/enroot.create.stderr" >&2 || true
+  exit 1
+fi
 
 mounts=(
   --mount "$UABI_REPO_ROOT/container/start_xrdp_container.sh:/usr/local/bin/start_xrdp_container.sh"
@@ -87,6 +105,7 @@ for i in $(seq 1 120); do
   fi
   if ! kill -0 "$container_pid" >/dev/null 2>&1; then
     echo "[ERROR] container exited before ready" >&2
+    cat "$job_root/logs/container.stdout" >&2 || true
     cat "$job_root/logs/container.stderr" >&2 || true
     exit 1
   fi
@@ -95,6 +114,7 @@ done
 
 if [ ! -f "$job_root/xrdp.ready" ]; then
   echo "[ERROR] xrdp readiness timeout" >&2
+  cat "$job_root/logs/container.stdout" >&2 || true
   cat "$job_root/logs/container.stderr" >&2 || true
   exit 1
 fi
