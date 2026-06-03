@@ -41,6 +41,22 @@ python windows\uabi_reverse_helper.py --port 10022 --local-rdp-port 9999
 다시 내려받아 덮어쓰려면 `--force-install`을 붙인다. 출력되는 Windows username,
 hostname, IP, UABI-side private key 경로를 기록한다.
 
+GUI로 실행하려면 다음을 사용한다.
+
+```powershell
+python windows\uabi_manager_gui.py
+```
+
+GUI에서는 다음을 할 수 있다.
+
+- `가상 컴퓨터 켜기`: 로컬 RDP 포워드를 열고 UABI Slurm XRDP job을 제출한다.
+- `끄기`: 현재 UABI XRDP job을 `scancel`하고 로컬 포워드를 정리한다.
+- `접속하기`: `mstsc.exe`를 `127.0.0.1:<local-rdp-port>`로 실행한다.
+- `상태 새로고침`: `squeue`, `scontrol`, `sstat`, job log, 게이트 릴레이 포트 상태를 보여준다.
+
+할당 자원은 GUI에서 partition, time, CPU, memory, GPU 개수를 입력한다.
+설정은 `secrets/uabi-ui/config.json`에 저장된다.
+
 ### 2. UABI에서 설정 파일 작성
 
 ```bash
@@ -124,6 +140,9 @@ scripts/submit_xrdp_job.sh
 windows/uabi_reverse_helper.py
   프로젝트 전용 portable OpenSSH sshd 준비 helper
 
+windows/uabi_manager_gui.py
+  Windows에서 UABI XRDP Slurm job을 켜고 끄고 접속하는 GUI
+
 docs/for_jang_minjong.md
   장민종님에게 전달할 친절 설명서
 
@@ -141,6 +160,7 @@ docs/HANDOFF_FOR_NEXT_AGENT.md
 - Slurm job에서 enroot container 실행
 - Slurm job에서 SSH reverse tunnel 실행
 - Windows helper로 프로젝트 전용 OpenSSH 다운로드/설정/시작
+- Windows GUI로 Slurm job 제출/취소, RDP 접속, 상태/자원 사용량 확인
 - CST 설치 hook placeholder
 - 동료 연구실 전달 문서
 

@@ -228,6 +228,10 @@ def pid_path(root: Path) -> Path:
     return root / "runtime" / "project-sshd.pid"
 
 
+def sshd_pid_path(root: Path) -> Path:
+    return root / "runtime" / "sshd.pid"
+
+
 def process_running(pid: int) -> bool:
     result = subprocess.run(
         ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
@@ -236,6 +240,46 @@ def process_running(pid: int) -> bool:
         check=False,
     )
     return str(pid) in result.stdout
+
+
+def process_command_line(pid: int) -> str:
+    if os.name != "nt":
+        return ""
+    command = (
+        f"Get-CimInstance Win32_Process -Filter 'ProcessId={pid}' | "
+        "Select-Object -ExpandProperty CommandLine"
+    )
+    result = ps(command, check=False)
+    return result.stdout.strip()
+
+
+def is_project_wrapper_pid(pid: int, root: Path) -> bool:
+    command_line = process_command_line(pid)
+    if not command_line:
+        return False
+    return (
+        Path(__file__).name in command_line
+        and str(root.resolve()) in command_line
+        and "--foreground" in command_line
+    )
+
+
+def listening_processes(port: int) -> list[int]:
+    if os.name != "nt":
+        return []
+    command = rf"""
+Get-NetTCPConnection -LocalPort {port} -State Listen -ErrorAction SilentlyContinue |
+  Select-Object -ExpandProperty OwningProcess
+"""
+    result = ps(command, check=False)
+    out: list[int] = []
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        if line.isdigit():
+            pid = int(line)
+            if pid not in out:
+                out.append(pid)
+    return out
 
 
 def stop_project_sshd(root: Path) -> None:
@@ -250,9 +294,13 @@ def stop_project_sshd(root: Path) -> None:
         print("[WARN] Invalid pid file removed.")
         return
     pid = int(pid_text)
-    print(f"[INFO] Stopping project sshd pid={pid}")
-    run(["taskkill", "/PID", str(pid), "/T", "/F"], check=False)
+    if process_running(pid) and is_project_wrapper_pid(pid, root):
+        print(f"[INFO] Stopping project sshd wrapper pid={pid}")
+        run(["taskkill", "/PID", str(pid), "/T", "/F"], check=False)
+    elif process_running(pid):
+        print(f"[WARN] Not stopping reused/non-project pid from pid file: {pid}")
     pid_file.unlink(missing_ok=True)
+    sshd_pid_path(root).unlink(missing_ok=True)
 
 
 def stop_project_sshd_by_command_line(root: Path) -> None:
@@ -287,7 +335,8 @@ def start_project_sshd(
     user: str,
 ) -> None:
     if not (foreground and os.environ.get("UABI_PROJECT_SSHD_CHILD") == "1"):
-        stop_stale_pid(root)
+        if stop_stale_pid(root, port):
+            return
     logs = root / "logs"
     logs.mkdir(parents=True, exist_ok=True)
     args = [str(sshd), "-D", "-e", "-f", str(config.resolve())]
@@ -335,24 +384,38 @@ def start_project_sshd(
     print(f"[INFO] Logs: {logs}")
 
 
-def stop_stale_pid(root: Path) -> None:
+def stop_stale_pid(root: Path, port: int) -> bool:
     pid_file = pid_path(root)
     if not pid_file.exists():
-        return
+        return False
     pid_text = pid_file.read_text(encoding="ascii").strip()
     if pid_text.isdigit() and process_running(int(pid_text)):
-        raise RuntimeError(f"project sshd already appears to be running: pid={pid_text}")
+        pid = int(pid_text)
+        if listening_processes(port):
+            print(f"[OK] Project sshd already appears to be running: wrapper pid={pid}, port={port}")
+            return True
+        if is_project_wrapper_pid(pid, root):
+            print(f"[WARN] Removing stale project sshd wrapper pid={pid}")
+            run(["taskkill", "/PID", str(pid), "/T", "/F"], check=False)
+        else:
+            print(f"[WARN] Removing reused/non-project pid file: pid={pid}")
     pid_file.unlink(missing_ok=True)
+    return False
 
 
 def status(root: Path) -> None:
     pid_file = pid_path(root)
+    sshd_pid_file = sshd_pid_path(root)
     if not pid_file.exists():
         print("[INFO] Project sshd is not running.")
         return
     pid_text = pid_file.read_text(encoding="ascii").strip()
     running = pid_text.isdigit() and process_running(int(pid_text))
-    print(f"[INFO] Project sshd pid={pid_text}, running={running}")
+    sshd_pid_text = sshd_pid_file.read_text(encoding="ascii").strip() if sshd_pid_file.exists() else ""
+    print(f"[INFO] Project sshd wrapper pid={pid_text}, running={running}")
+    if sshd_pid_text:
+        sshd_running = sshd_pid_text.isdigit() and process_running(int(sshd_pid_text))
+        print(f"[INFO] Project sshd listener pid={sshd_pid_text}, running={sshd_running}")
 
 
 def ensure_firewall_rule(port: int, rule_name: str, remote_address: str | None) -> None:
