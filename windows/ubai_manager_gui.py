@@ -228,21 +228,33 @@ def restrict_private_key(path: Path) -> None:
         subprocess.run(command, text=True, capture_output=True, check=False)
 
 
-def append_managed_block(path: Path, begin: str, end: str, block: str) -> None:
+def append_managed_block(
+    path: Path,
+    begin: str,
+    end: str,
+    block: str,
+    extra_markers: list[tuple[str, str]] | None = None,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     old = path.read_text(encoding="utf-8") if path.exists() else ""
     lines = old.splitlines()
     new_lines: list[str] = []
-    skipping = False
+    marker_pairs = [(begin, end), *(extra_markers or [])]
+    skipping_until: str | None = None
     for line in lines:
-        if line.strip() == begin:
-            skipping = True
+        stripped = line.strip()
+        if skipping_until is not None:
+            if stripped == skipping_until:
+                skipping_until = None
             continue
-        if line.strip() == end:
-            skipping = False
+        matched_end = next(
+            (marker_end for marker_begin, marker_end in marker_pairs if stripped == marker_begin),
+            None,
+        )
+        if matched_end is not None:
+            skipping_until = matched_end
             continue
-        if not skipping:
-            new_lines.append(line)
+        new_lines.append(line)
     managed_lines = block.strip("\n").splitlines()
     if new_lines:
         managed_lines.append("")
@@ -938,6 +950,8 @@ echo "[OK] 내부 reverse tunnel key 준비 완료"
         known_hosts = "NUL" if os.name == "nt" else "/dev/null"
         begin = "# >>> UBAI managed container SSH"
         end = "# <<< UBAI managed container SSH"
+        legacy_begin = "# >>> UABI managed container SSH"
+        legacy_end = "# <<< UABI managed container SSH"
         block = f"""
 {begin}
 Host ubai-container
@@ -950,10 +964,22 @@ Host ubai-container
   UserKnownHostsFile {known_hosts}
 
 Host localhost
+  HostName 127.0.0.1
+  Port {LOCAL_CONTAINER_SSH_PORT}
+  User root
   IdentityFile {identity}
+  IdentitiesOnly yes
+  StrictHostKeyChecking no
+  UserKnownHostsFile {known_hosts}
 {end}
 """
-        append_managed_block(Path.home() / ".ssh" / "config", begin, end, block)
+        append_managed_block(
+            Path.home() / ".ssh" / "config",
+            begin,
+            end,
+            block,
+            extra_markers=[(legacy_begin, legacy_end)],
+        )
         self.post_log("[OK] VSCode SSH alias 준비: ssh://root@ubai-container")
         self.post_log(f"[INFO] localhost:{LOCAL_CONTAINER_SSH_PORT}에도 내부 key가 자동 적용됩니다.")
 

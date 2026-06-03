@@ -80,6 +80,20 @@ exec startxfce4
 EOF
 chmod +x /etc/xrdp/startwm.sh
 
+if [ -f /etc/xrdp/sesman.ini ]; then
+  cp -f /etc/xrdp/sesman.ini "/etc/xrdp/sesman.ini.ubai.bak.$(date +%s)" 2>/dev/null || true
+  awk '
+    BEGIN { in_xvnc=0; skip_next=0 }
+    /^\[Xvnc\]$/ { in_xvnc=1; print; next }
+    in_xvnc && /^\[/ { in_xvnc=0 }
+    in_xvnc && skip_next { skip_next=0; if ($0 == "param=-1") next }
+    in_xvnc && $0 == "param=-rfbport" { skip_next=1; next }
+    in_xvnc && $0 == "#param=-localhost" { print "param=-localhost"; next }
+    { print }
+  ' /etc/xrdp/sesman.ini > /etc/xrdp/sesman.ini.ubai.tmp
+  mv /etc/xrdp/sesman.ini.ubai.tmp /etc/xrdp/sesman.ini
+fi
+
 if [ ! -x /usr/sbin/sshd ] && command -v dnf >/dev/null 2>&1; then
   echo "[INFO] openssh-server missing; trying runtime install..."
   dnf -y install openssh-server >/dev/null 2>&1 || true
@@ -90,6 +104,16 @@ if [ ! -x /usr/sbin/sshd ]; then
 fi
 
 ssh-keygen -A >/dev/null 2>&1 || true
+
+# Rootless enroot makes OpenSSH's unprivileged preauth identity fail its
+# irreversible setuid check. This sshd is container-local and tunnel-only.
+if grep -q "^sshd:" /etc/passwd; then
+  sed -i -E "s/^sshd:([^:]*):[0-9]+:[0-9]+:/sshd:\1:0:0:/" /etc/passwd
+fi
+if grep -q "^sshd:" /etc/group; then
+  sed -i -E "s/^sshd:([^:]*):[0-9]+:/sshd:\1:0:/" /etc/group
+fi
+
 sshd_options=(
   -D
   -e

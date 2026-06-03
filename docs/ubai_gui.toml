@@ -1,0 +1,486 @@
+[[requests]]
+time = "2026-06-02 20:00:39 KST"
+request = '''현재 프로젝트 구상을 내게 설명해주고, 이 PC 아이피랑 포트 그리고 게이트노드 접속을 위한 에스에스에이치 키를 담을 폴더를 만들어줘'''
+
+[[requests]]
+time = "2026-06-02 20:09:18 KST"
+request = '''secrets 여기에 내가 게이트 접속 키 넣어놨는데 접속 테스트좀'''
+
+[[requests]]
+time = "2026-06-02 20:10:23 KST"
+request = '''HostName 172.16.10.36
+    Port 22
+    User harry261
+이걸로 접속해봐'''
+
+[[requests]]
+time = "2026-06-02 20:13:33 KST"
+request = '''PS C:\Users\5600X2\Projects\ubai_gui> ssh -i secrets\gate-node-ssh\keys\id_ed25519 -p 22 -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new harry261@172.16.10.36 "echo SSH_OK; whoami; hostname; uname -a"
+Bad permissions. Try removing permissions for user: DESKTOP-L5CB36B\\CodexSandboxUsers (S-1-5-21-3495407667-3340902936-1429889170-1003) on file C:/Users/5600X2/Projects/ubai_gui/secrets/gate-node-ssh/keys/id_ed25519.
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@         WARNING: UNPROTECTED PRIVATE KEY FILE!          @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+Permissions for 'secrets\\gate-node-ssh\\keys\\id_ed25519' are too open.
+It is required that your private key files are NOT accessible by others.
+This private key will be ignored.
+Load key "secrets\\gate-node-ssh\\keys\\id_ed25519": bad permissions
+harry261@172.16.10.36: Permission denied (publickey,gssapi-keyex,gssapi-with-mic).
+PS C:\Users\5600X2\Projects\ubai_gui>'''
+
+[[requests]]
+time = "2026-06-02 20:20:30 KST"
+request = '''PS C:\Users\5600X2\Projects\ubai_gui> ssh -i secrets\\gate-node-ssh\\keys\\id_ed25519 -p 22 -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new harry261@172.16.10.36 "echo SSH_OK; whoami; hostname; uname -a"
+SSH_OK
+harry261
+gate1.hpc
+Linux gate1.hpc 4.18.0-553.5.1.el8_10.x86_64 #1 SMP Thu Jun 6 09:41:19 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux
+PS C:\Users\5600X2\Projects\ubai_gui>'''
+
+[[requests]]
+time = "2026-06-02 20:21:28 KST"
+request = '''goal.md를 봐봐 할 수 있겠어? 아직 하지는 말고 계획을 말해봐'''
+
+[[requests]]
+time = "2026-06-02 20:22:35 KST"
+request = '''## 장기 목표 이건 전혀 할 필요 없고 그 전까지만 하면 돼 알겠지'''
+
+[[requests]]
+time = "2026-06-02 20:24:39 KST"
+request = '''/goal GOAL.md를 달성하시오'''
+
+[[requests]]
+time = "2026-06-02 20:26:30 KST"
+request = '''근데 sshd는 시스템 전역의 그것을 사용하지 말고 파이썬으로 직접 커스텀 서버로 열어야 하는거 알아?'''
+
+[[requests]]
+time = "2026-06-02 20:27:25 KST"
+request = '''아니 openssh-server는 맞는데 시스템 전역의 그걸 쓰지 말라고 22번은 필요 없어 그리고'''
+
+[[requests]]
+time = "2026-06-02 20:29:30 KST"
+request = '''sshd 서버가 없으면 github에서 openssh-server for windows를 다운받아서 그걸 사용하게 해줘 설치 안돼있어도 설치 되게끔 서비스는 신경쓰지 말고 그 바이너리를 결국은 사용을 해 sshd 강제 설치 cli 플래그 정상 작동하게 해주고'''
+
+[[requests]]
+time = "2026-06-02 20:31:41 KST"
+request = '''/goal GOAL.md를 달성하시오'''
+
+[[requests]]
+time = "2026-06-03 16:09:32 KST"
+request = '''어 잘 되더라 유저명 user 비번 1q2w3e 이걸로 해서 커밋해줘'''
+
+[[requests]]
+time = "2026-06-03 16:12:25 KST"
+request = '''PS C:\Users\5600X2\Projects\ubai_gui> python windows\uabi_reverse_helper.py --port 10022 --local-rdp-port 9999
+[OK] Portable OpenSSH already exists: C:\Users\5600X2\Projects\ubai_gui\secrets\windows-sshd\openssh\OpenSSH-Win64\sshd.exe
+Traceback (most recent call last):
+  File "C:\Users\5600X2\Projects\ubai_gui\windows\uabi_reverse_helper.py", line 509, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "C:\Users\5600X2\Projects\ubai_gui\windows\uabi_reverse_helper.py", line 494, in main
+    start_project_sshd(
+  File "C:\Users\5600X2\Projects\ubai_gui\windows\uabi_reverse_helper.py", line 290, in start_project_sshd
+    stop_stale_pid(root)
+  File "C:\Users\5600X2\Projects\ubai_gui\windows\uabi_reverse_helper.py", line 344, in stop_stale_pid
+    raise RuntimeError(f"project sshd already appears to be running: pid={pid_text}")
+RuntimeError: project sshd already appears to be running: pid=32196
+PS C:\Users\5600X2\Projects\ubai_gui> 
+
+뭘 해야 실행할 수 있지?'''
+
+[[requests]]
+time = "2026-06-03 16:15:15 KST"
+request = '''UI 하나 만들어서 UBAI 내 가상 컴퓨터 켜기(할당할 자원도 입력 가능하게) 끄기 버튼이랑 접속하기 버튼 그리고 상태 보는거랑 자원 사용량 해줘'''
+
+[[requests]]
+time = "2026-06-03 16:15:43 KST"
+request = '''UI 하나 만들어서 UBAI 내 가상 컴퓨터 켜기(할당할 자원도 입력 가능하게) 끄기 버튼이랑 접속하기 버튼 그리고 상태 보는거랑 자원 사용량 해줘'''
+
+[[requests]]
+time = "2026-06-03 17:11:42 KST"
+request = '''일단 커밋해 이렇게 되면서 접속이 안되더라 그리고 끄기 눌러도 이미 다른 작업이 실행중이라고 뜸'''
+
+[[requests]]
+time = "2026-06-03 17:15:48 KST"
+request = '''어 마저 해줘 yolo 모드로 바꿈'''
+
+[[requests]]
+time = "2026-06-03 17:22:06 KST"
+request = '''가상컴퓨터 라는 말을 없애고 계산노드 컨테이너로 바꿔 그리고 컨테이너 켜기 컨테이너 끄기 버튼으로 이름 바꿔'''
+
+[[requests]]
+time = "2026-06-03 17:24:54 KST"
+request = '''PS C:\Users\5600X2\Projects\ubai_gui> python windows\uabi_manager_gui.py
+Exception in thread Thread-2 (_readerthread):
+Traceback (most recent call last):
+  File "C:\Users\5600X2\AppData\Local\Programs\Python\Python312\Lib\threading.py", line 1075, in _bootstrap_inner
+    self.run()
+  File "C:\Users\5600X2\AppData\Local\Programs\Python\Python312\Lib\threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\5600X2\AppData\Local\Programs\Python\Python312\Lib\subprocess.py", line 1599, in _readerthread
+    buffer.append(fh.read())
+                  ^^^^^^^^^
+UnicodeDecodeError: 'cp949' codec can't decode byte 0xec in position 7: illegal multibyte sequence
+Exception in thread Thread-4 (_readerthread):
+Traceback (most recent call last):
+  File "C:\Users\5600X2\AppData\Local\Programs\Python\Python312\Lib\threading.py", line 1075, in _bootstrap_inner
+    self.run()
+  File "C:\Users\5600X2\AppData\Local\Programs\Python\Python312\Lib\threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\Users\5600X2\AppData\Local\Programs\Python\Python312\Lib\subprocess.py", line 1599, in _readerthread
+    buffer.append(fh.read())
+                  ^^^^^^^^^
+UnicodeDecodeError: 'cp949' codec can't decode byte 0xec in position 32: illegal multibyte sequence
+
+CMDKEY: Credential added successfully.
+
+CMDKEY: Credential added successfully.
+ 지금 접속이 안됨'''
+
+[[requests]]
+time = "2026-06-03 17:27:21 KST"
+request = '''이러던데 왜이러는거야'''
+
+[[requests]]
+time = "2026-06-03 17:28:39 KST"
+request = '''이거 컨테이너 안에가 안돼 아직'''
+
+[[requests]]
+time = "2026-06-03 17:30:21 KST"
+request = '''컨테이너 안에의 계정명 정하는거 없애주고 비밀번호만 정하게 해줘 안에 계정 무조건 root로 해줘'''
+
+[[requests]]
+time = "2026-06-03 17:30:45 KST"
+request = '''xrdp 접속 잘 되게 고쳐주고 컨테이너 안에의 계정명 정하는거 없애주고 비밀번호만 정하게 해줘 안에 계정 무조건 root로 해줘'''
+
+[[requests]]
+time = "2026-06-03 17:37:20 KST"
+request = '''이거 출력창 맨 밑에 \ | / - 이걸로 현재 접속 가능하지 않으면 지루하지 않게 표시해주고 상태 켜는 중(접속 불가능) 이렇게 명백히 접속 가능인지 접속 불가능인지 확인할 수 있게 해줘 리버스키를 사용자가 관리할 수 없게 해줘 그냥 무조건 자동화로 리버스 접속 안되는 일 없이 내부 추상화만 해'''
+
+[[requests]]
+time = "2026-06-03 17:38:34 KST"
+request = '''이거 출력창 맨 밑에 \ | / - 이걸로 현재 접속 가능하지 않으면 지루하지 않게 표시해주고 상태 켜는 중(접속 불가능) 이렇게 명백히 접속 가능인지 접속 불가능인지 확인할 수 있게 해줘 리버스키를 사용자가 관리할 수 없게 해줘 그냥 무조건 자동화로 리버스 접속 안되는 일 없이 내부 추상화만 해 설정 저장도 없애 그냥
+사용자가 넣어줄껀 ubai 유저명과 (아이피도 고정해버려) ubai 키만 넣어주면 무조건 접속 됙세'''
+
+[[requests]]
+time = "2026-06-03 17:48:43 KST"
+request = '''이거 그리고 자동으로 컨테이너 안에 9922번으로 sshd 열어놔라 vscode로 ssh ssh://root@localhost:9922 접속하면 거기 접속할 수 있게 하고 그것도 사용할 수 있다고 문서에 잘 적어놔 그리고 원래 계산노드에는 enroot가 있고 podman이 없어 그리고 게이트노드엔 podman이 있고 enroot가 없음 podman fallback 경고 안뜨게 해'''
+
+[[requests]]
+time = "2026-06-03 17:49:05 KST"
+request = '''이거 그리고 자동으로 컨테이너 안에 9922번으로 sshd 열어놔라 vscode로 ssh ssh://root@localhost:9922 접속하면 거기 접속할 수 있게 역포워딩도 잘 하고 그것도 사용할 수 있다고 문서에 잘 적어놔 그리고 원래 계산노드에는 enroot가 있고 podman이 없어 그리고 게이트노드엔 podman이 있고 enroot가 없음 podman fallback 경고 안뜨게 해'''
+
+[[requests]]
+time = "2026-06-03 17:51:23 KST"
+request = '''이거 그리고 자동으로 컨테이너 안에 9922번으로 sshd 열어놔라 vscode로 ssh ssh://root@localhost:9922 접속하면 거기 접속할 수 있게 역포워딩도 잘 하고 그것도 사용할 수 있다고 문서에 잘 적어놔 그리고 원래 계산노드에는 enroot가 있고 podman이 없어 그리고 게이트노드엔 podman이 있고 enroot가 없음 podman fallback 경고 안뜨게 해 
+이건 그리고 이미 암호화 된 연결이니까 암호/키 없이 그냥 접속되게도 할 수 있냐?'''
+
+[[requests]]
+time = "2026-06-03 18:05:49 KST"
+request = '''현재 프로젝트는 자동화 환경을 잘 구축하면 상상하시는 모든 것을 구현할 수 있는 예시이고,
+잡 여러개와 여러 컨테이너로 컴퓨팅 리소스를 극한으로 사용하는 것까지는 할 수 없으니 이 툴을 이제 앞으로 잘 커스터마이징 하셔서 연구하시는 데에 활용하시기 바랍니다 
+
+현재 프로젝트로 할 수 있는 것) 
+고성능 PC 하나를 할당받아서 GUI 접속 후 환경 세팅, 직접 시뮬레이션 등
+현재 프로젝트로 할 수 없는 것) << 직접 하셔야 함 그러나 필요한, 그리고 실제 작동되는게 검증된 좋은 툴들을 이 프로젝트에 모두 다 넣어놨기 때문에 구축하시는 데에 도움이 될 것 같음
+고성능 PC 여러대를 자동으로 할당받아서 GUI 접속 없이 시뮬레이션 데이터셋 생성(예시: [Glaysia/peetsfea-runner](https://github.com/Glaysia/peetsfea-runner))
+CST Studio도 스크립트 자동화 툴이 잘 돼있기 때문에 자동화로 수만개의 형상을 자동 생성 후 데이터를 뽑아 연구에 활용하기 좋을 것으로 생각됨(써보지는 않았으나, Ansys를 같은 원리로 정말 잘 활용 중, 원리가 같고 컨테이너까지 썼으니 무조건 됨)
+
+이걸 공손하게 잘 적어줘 docs\for_jang_minjong.md 이거에 넣 그리고 쓸데없는 내용은 쳐내'''
+
+[[requests]]
+time = "2026-06-03 18:08:11 KST"
+request = '''[OK] 입력값 반영: C:\Users\5600X2\Projects\ubai_gui\secrets\uabi-ui\config.json
+[INFO] 내부 reverse tunnel key 생성 중...
+[OK] 내부 reverse tunnel key 준비 완료
+[INFO] 내부 VSCode SSH key 생성 중...
+[OK] VSCode SSH alias 준비: ssh://root@uabi-container
+[INFO] localhost:9922에도 내부 key가 자동 적용됩니다.
+[INFO] 종료할 로컬 포워드가 없습니다.
+[OK] 로컬 포워드 시작: RDP 127.0.0.1:9999, SSH 127.0.0.1:9922, pid=30064
+[INFO] 실행 중인 UABI XRDP job이 없습니다.
+[OK] 기존 UABI XRDP job/relay 정리 완료
+[INFO] Slurm job 제출 중...
+[INFO] Submitting XRDP job with env: /gpfs/home1/harry261/ubai_gui/config/ui-session.env
+[INFO] Container backend: enroot
+Submitted batch job 662987
+UABI_UI_JOB_ID=662987
+[OK] Job submitted: 662987
+[INFO] XRDP/reverse tunnel 준비 대기 중...  
+
+
+이거 왜 안되냐'''
+
+[[requests]]
+time = "2026-06-03 18:18:16 KST"
+request = '''[OK] 입력값 반영: C:\Users\5600X2\Projects\ubai_gui\secrets\uabi-ui\config.json
+[OK] 내부 reverse tunnel key 준비 완료
+[OK] VSCode SSH alias 준비: ssh://root@uabi-container
+[INFO] localhost:9922에도 내부 key가 자동 적용됩니다.
+[INFO] 종료할 로컬 포워드가 없습니다.
+[OK] 로컬 포워드 시작: RDP 127.0.0.1:9999, SSH 127.0.0.1:9922, pid=6232
+[INFO] 실행 중인 UABI XRDP job이 없습니다.
+[OK] 기존 UABI XRDP job/relay 정리 완료
+[INFO] Slurm job 제출 중...
+[ERROR] enroot image not found: 
+
+왜 안되냐고 엔루트 이미지도 없으면 당연히 자동 생성해야 이 프로젝트 취지에 맞는거잖아 전에 했을 때는 너가 들어가서 이미지 만들고 이걸 했던거야?'''
+
+[[requests]]
+time = "2026-06-03 18:35:08 KST"
+request = '''sessions\2026\06\02\rollout-2026-06-02T19-59-22-019e87fc-f615-7722-8efd-f00afaf7de27.jsonl 이거 내가 한 요청을 
+ubai_gui.toml 여기에 잘 적어줘 한국시간 기준 시간이랑 요청만'''
+
+[[requests]]
+time = "2026-06-03 18:35:23 KST"
+request = '''야 이렇게 오래걸릴게 아닌데 뭐하냐'''
+
+[[requests]]
+time = "2026-06-03 18:37:02 KST"
+request = '''아니 sqsh 만드는게 오래 걸리는게 아니라니까 애초에 없으면 만드는건 꼭 필요한 로직이야 그리고'''
+
+[[requests]]
+time = "2026-06-03 18:42:02 KST"
+request = '''용량 모자란거 아냐? ubai_gui 관련 파일 다 지우고 다시 해봐'''
+
+[[requests]]
+time = "2026-06-03 18:44:35 KST"
+request = '''내가 다 지웠어 저기엔 아무것도 없어도 ssh 접속만 되면 다 새로 만들면서 정상 작동되게 구현해야 해'''
+
+[[requests]]
+time = "2026-06-03 18:54:48 KST"
+request = '''파이어폭스 넣어놔라'''
+
+[[requests]]
+time = "2026-06-03 19:29:44 KST"
+request = '''야 저거 파티션 문자열로 쓰는게 아니라 고르는걸로 바꿔줘'''
+
+[[requests]]
+time = "2026-06-03 19:32:03 KST"
+request = '''그거 그리고 각 파티션에서 사용할 수 있는 자원도 확인할 수 있게 해줘'''
+
+[[requests]]
+time = "2026-06-03 19:32:50 KST"
+request = '''이번에 한 번만 조회해서 안에 그냥 작성해놔 매번 조회할 필요가 없음 GPU 여러개인지도 잘 확인해'''
+
+[[requests]]
+time = "2026-06-03 19:36:48 KST"
+request = '''성능지표를 3080 벤치마크 점수를 기준으로 해서 
+예를 들면 성능 4 x RTX3080 이나 10.5 x RTX3080 이런 식으로'''
+
+[[requests]]
+time = "2026-06-03 19:37:11 KST"
+request = '''성능지표를 3080 벤치마크 점수를 기준으로 해서 
+예를 들면 성능 4 x RTX3080 이나 10.5 x RTX3080 이런 식으로
+메모리는 GB로 바꿔 그리고'''
+
+[[requests]]
+time = "2026-06-03 19:40:43 KST"
+request = '''"total_gpu": "40",
+        "total_perf": "105.0 x RTX3080", 이건 빼 필요없어'''
+
+[[requests]]
+time = "2026-06-03 19:42:06 KST"
+request = '''n91 예외 관심 없어 이대로 커밋해'''
+
+[[requests]]
+time = "2026-06-03 19:46:51 KST"
+request = '''이렇게 뜨는데 원인이 뭐냐'''
+
+[[requests]]
+time = "2026-06-03 19:48:21 KST"
+request = '''내가 끈거야 그 끄기 전에 안돼서 그랬어'''
+
+[[requests]]
+time = "2026-06-03 19:49:39 KST"
+request = '''야임마 리버스를 왜 하냐 게이트노드는 그냥 tcp가 다 열려있어서 필요가 없는데 바보야? 계산노드 tcp가 막혀서 리버스 터널을 쓰는거야 바본가'''
+
+[[requests]]
+time = "2026-06-03 19:51:45 KST"
+request = '''아니 다시 생각해보자 계산노드->게이트 터널이랑 이 pc->게이트 터널 이렇게 열면 이 pc에는 sshd가 없어도 되는거 아니냐?'''
+
+[[requests]]
+time = "2026-06-03 19:52:25 KST"
+request = '''그러면 이 pc sshd 서버 전체에서 아예 빼버리자 어차피 느려서 더 느려져도 체감 안됨'''
+
+[[requests]]
+time = "2026-06-03 19:55:17 KST"
+request = '''그러면 이 pc sshd 서버 전체에서 아예 빼버리자 어차피 느려서 더 느려져도 체감 안됨
+uabi라는건 없어 ubai로 표현 전부 통일해'''
+
+[[requests]]
+time = "2026-06-03 20:06:29 KST"
+request = '''PS C:\Users\5600X2\Projects\ubai_gui> python windows\ubai_manager_gui.py
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "C:\Users\5600X2\AppData\Local\Programs\Python\Python312\Lib\tkinter\__init__.py", line 1968, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\5600X2\Projects\ubai_gui\windows\ubai_manager_gui.py", line 447, in _on_partition_table_selected
+    self._update_partition_detail()
+  File "C:\Users\5600X2\Projects\ubai_gui\windows\ubai_manager_gui.py", line 459, in _update_partition_detail
+    self.partition_detail_var.set(
+  File "C:\Users\5600X2\AppData\Local\Programs\Python\Python312\Lib\tkinter\__init__.py", line 427, in set
+    return self._tk.globalsetvar(self._name, value)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Exception in Tkinter callback
+Traceback (most recent call last):
+  File "C:\Users\5600X2\AppData\Local\Programs\Python\Python312\Lib\tkinter\__init__.py", line 1968, in __call__
+    return self.func(*args)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\5600X2\Projects\ubai_gui\windows\ubai_manager_gui.py", line 446, in _on_partition_table_selected
+    self.vars["partition"].set(partition)
+  File "C:\Users\5600X2\AppData\Local\Programs\Python\Python312\Lib\tkinter\__init__.py", line 427, in set
+    return self._tk.globalsetvar(self._name, value)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "C:\Users\5600X2\Projects\ubai_gui\windows\ubai_manager_gui.py", line 1236, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "C:\Users\5600X2\Projects\ubai_gui\windows\ubai_manager_gui.py", line 1231, in main
+    app.mainloop()
+  File "C:\Users\5600X2\AppData\Local\Programs\Python\Python312\Lib\tkinter\__init__.py", line 1505, in mainloop
+    self.tk.mainloop(n)
+KeyboardInterrupt
+PS C:\Users\5600X2\Projects\ubai_gui> ^C
+PS C:\Users\5600X2\Projects\ubai_gui> ^C
+PS C:\Users\5600X2\Projects\ubai_gui> ^C
+PS C:\Users\5600X2\Projects\ubai_gui> ^C
+PS C:\Users\5600X2\Projects\ubai_gui> ^C
+PS C:\Users\5600X2\Projects\ubai_gui>
+
+고쳐줘 뭐가 문제니'''
+
+[[requests]]
+time = "2026-06-03 20:09:50 KST"
+request = '''이미지가 이미 있으면 빌드 안하는거지?(코드 수정X, 그냥 질문'''
+
+[[requests]]
+time = "2026-06-03 20:12:37 KST"
+request = '''[INFO] dnf install dnf-plugins-core epel-release
+--- build stderr tail
+
+created 5978 files
+created 2349 directories
+created 920 symlinks
+created 0 devices
+created 0 fifos
+/etc/enroot/hooks.d/10-shadow.sh: line 70: 2219281 Broken pipe             yes 2> /dev/null
+     2219282 Segmentation fault      (core dumped) | pwck -R "${ENROOT_ROOTFS}" "${pwddb#${ENROOT_ROOTFS}}" /etc/shadow > /dev/null 2>&1
+[INFO] image build job is still running: 663072
+--- build stdout tail
+[INFO] Target image: /home1/harry261/runtime/enroot/ubai-cst-rocky94-xrdp.sqsh
+[INFO] Build workdir: /home1/harry261/runtime/enroot/build-ubai-cst-rocky94
+[INFO] Importing OCI image with enroot...
+[INFO] Creating writable enroot container: ubai-cst-rocky94-xrdp
+[INFO] Installing packages inside enroot container...
+[INFO] Rocky release:
+Rocky Linux release 9.4 (Blue Onyx)
+[INFO] dnf install dnf-plugins-core epel-release
+--- build stderr tail
+
+created 5978 files
+created 2349 directories
+created 920 symlinks
+created 0 devices
+created 0 fifos
+/etc/enroot/hooks.d/10-shadow.sh: line 70: 2219281 Broken pipe             yes 2> /dev/null
+     2219282 Segmentation fault      (core dumped) | pwck -R "${ENROOT_ROOTFS}" "${pwddb#${ENROOT_ROOTFS}}" /etc/shadow > /dev/null 2>&1
+
+이거 잘 되고 있는거야?'''
+
+[[requests]]
+time = "2026-06-03 20:13:30 KST"
+request = '''ui 내부 색배합을 지금처럼 흰배경 검정글씨 말고 nord dark 테마에서 따와서 해줘 난 그게 좋드러'''
+
+[[requests]]
+time = "2026-06-03 20:17:32 KST"
+request = '''지금 돌고 있는 빌드 노드 들어가서 봐봐 왤케 오래걸리는거지'''
+
+[[requests]]
+time = "2026-06-03 20:19:34 KST"
+request = '''다운로드 kaist에서 하게 바꿔라 뭐냐 이게'''
+
+[[requests]]
+time = "2026-06-03 20:26:13 KST"
+request = '''Repository appstream is listed more than once in the configuration
+Repository crb is listed more than once in the configuration
+Repository extras is listed more than once in the configuration
+Error: There are no enabled repositories in "/etc/yum.repos.d", "/etc/yum/repos.d", "/etc/distro.repos.d".
+[WARN] dnf attempt 2/2 failed: rc=1
+[ERROR] enroot image build failedRepository appstream is listed more than once in the configuration
+Repository crb is listed more than once in the configuration
+Repository extras is listed more than once in the configuration
+Error: There are no enabled repositories in "/etc/yum.repos.d", "/etc/yum/repos.d", "/etc/distro.repos.d".
+[WARN] dnf attempt 2/2 failed: rc=1
+[ERROR] enroot image build failed'''
+
+[[requests]]
+time = "2026-06-03 20:26:31 KST"
+request = '''Repository appstream is listed more than once in the configuration
+Repository crb is listed more than once in the configuration
+Repository extras is listed more than once in the configuration
+Error: There are no enabled repositories in "/etc/yum.repos.d", "/etc/yum/repos.d", "/etc/distro.repos.d".
+[WARN] dnf attempt 2/2 failed: rc=1
+[ERROR] enroot image build failedRepository appstream is listed more than once in the configuration
+Repository crb is listed more than once in the configuration
+Repository extras is listed more than once in the configuration
+Error: There are no enabled repositories in "/etc/yum.repos.d", "/etc/yum/repos.d", "/etc/distro.repos.d".
+[WARN] dnf attempt 2/2 failed: rc=1
+[ERROR] enroot image build failed
+
+너가 빌드 되는거 확인해'''
+
+[[requests]]
+time = "2026-06-03 20:26:47 KST"
+request = '''Repository appstream is listed more than once in the configuration
+Repository crb is listed more than once in the configuration
+Repository extras is listed more than once in the configuration
+Error: There are no enabled repositories in "/etc/yum.repos.d", "/etc/yum/repos.d", "/etc/distro.repos.d".
+[WARN] dnf attempt 2/2 failed: rc=1
+[ERROR] enroot image build failedRepository appstream is listed more than once in the configuration
+Repository crb is listed more than once in the configuration
+Repository extras is listed more than once in the configuration
+Error: There are no enabled repositories in "/etc/yum.repos.d", "/etc/yum/repos.d", "/etc/distro.repos.d".
+[WARN] dnf attempt 2/2 failed: rc=1
+[ERROR] enroot image build failed
+
+너가 빌드 끝까지 되는거 확인해'''
+
+[[requests]]
+time = "2026-06-03 20:39:20 KST"
+request = '''--- xrdp-sesman.stderr
+--- sshd.stderr
+Server listening on 127.0.0.1 port 9922.
+Connection closed by 127.0.0.1 port 39072
+[WARN] 준비 대기 종료 rc=2. 상태 새로고침으로 확인하세요.
+
+왜이러냐'''
+
+[[requests]]
+time = "2026-06-03 20:44:38 KST"
+request = '''아직 잡 끄지 말아봐 
+일단 rdp는 붙었는데 붙고 나서 안에서 오류 나면서 로그인이 안됐고
+ssh는 아예 안됨
+[20:43:48.528] > Connection closed by 127.0.0.1 port 9922
+> 프로세스에서 없는 파이프에 쓰려고 했습니다.
+[20:43:48.834] "install" terminal command done
+[20:43:48.834] Install terminal quit with output: 프로세스에서 없는 파이프에 쓰려고 했습니다.
+[20:43:48.834] Received install output: 프로세스에서 없는 파이프에 쓰려고 했습니다.
+[20:43:48.835] WARN: $PLATFORM is undefined in installation script output.  Errors may be dropped.
+[20:43:48.835] Failed to parse remote port from server output
+[20:43:48.835] Resolver error: Error
+    at y.Create (c:\Users\5600X2\.vscode\extensions\ms-vscode-remote.remote-ssh-0.123.0\out\extension.js:2:722235)
+    at t.handleInstallOutput (c:\Users\5600X2\.vscode\extensions\ms-vscode-remote.remote-ssh-0.123.0\out\extension.js:2:720316)
+    at t.tryInstall (c:\Users\5600X2\.vscode\extensions\ms-vscode-remote.remote-ssh-0.123.0\out\extension.js:2:842913)
+    at async c:\Users\5600X2\.vscode\extensions\ms-vscode-remote.remote-ssh-0.123.0\out\extension.js:2:801927
+    at async t.withShowDetailsEvent (c:\Users\5600X2\.vscode\extensions\ms-vscode-remote.remote-ssh-0.123.0\out\extension.js:2:805164)
+    at async A (c:\Users\5600X2\.vscode\extensions\ms-vscode-remote.remote-ssh-0.123.0\out\extension.js:2:798392)
+    at async t.resolve (c:\Users\5600X2\.vscode\extensions\ms-vscode-remote.remote-ssh-0.123.0\out\extension.js:2:802578)
+    at async c:\Users\5600X2\.vscode\extensions\ms-vscode-remote.remote-ssh-0.123.0\out\extension.js:2:1095407
+[20:43:48.839] ------'''
+
+[[requests]]
+time = "2026-06-03 21:01:15 KST"
+request = '''커밋해줘'''
