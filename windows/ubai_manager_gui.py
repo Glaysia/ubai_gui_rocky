@@ -257,6 +257,7 @@ class UbaiManager(tk.Tk):
         self.partition_combo: ttk.Combobox | None = None
         self.partition_tree: ttk.Treeview | None = None
         self.partition_detail_var = tk.StringVar(value="")
+        self.syncing_partition_selection = False
         self.worker: threading.Thread | None = None
         self.stop_requested = threading.Event()
         self.messages: queue.Queue[tuple[str, str]] = queue.Queue()
@@ -434,27 +435,36 @@ class UbaiManager(tk.Tk):
         save_json(CONFIG_PATH, self.values())
 
     def _on_partition_selected(self, _event: tk.Event | None = None) -> None:
-        self._update_partition_detail()
+        self._update_partition_detail(sync_tree=True)
 
     def _on_partition_table_selected(self, _event: tk.Event | None = None) -> None:
+        if self.syncing_partition_selection:
+            return
         if not self.partition_tree:
             return
         selected = self.partition_tree.selection()
         if not selected:
             return
         partition = selected[0]
-        self.vars["partition"].set(partition)
-        self._update_partition_detail()
+        if self.vars["partition"].get() != partition:
+            self.vars["partition"].set(partition)
+        self._update_partition_detail(sync_tree=False)
 
-    def _update_partition_detail(self) -> None:
+    def _update_partition_detail(self, *, sync_tree: bool = True) -> None:
         partition = self.vars["partition"].get().strip()
         item = PARTITION_RESOURCE_BY_NAME.get(partition)
         if not item:
             self.partition_detail_var.set("선택한 파티션 자원 정보를 찾을 수 없습니다.")
             return
-        if self.partition_tree and self.partition_tree.exists(partition):
-            self.partition_tree.selection_set(partition)
-            self.partition_tree.focus(partition)
+        if sync_tree and self.partition_tree and self.partition_tree.exists(partition):
+            current = tuple(self.partition_tree.selection())
+            if current != (partition,):
+                self.syncing_partition_selection = True
+                try:
+                    self.partition_tree.selection_set(partition)
+                    self.partition_tree.focus(partition)
+                finally:
+                    self.syncing_partition_selection = False
         gpu_text = "GPU 없음" if item["gpu"] == "-" else f'{item["gpu"]}, 성능 {item["perf"]}'
         self.partition_detail_var.set(
             f'선택: {item["name"]} | 노드 {item["nodes"]}개 | CPU {item["cpu"]}/node | '
